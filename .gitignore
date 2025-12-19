@@ -7,8 +7,9 @@
 .DS_Store
 **/.DS_Store
 
-# dfx temporary files
+# dfx/icp temporary files
 .dfx/
+.icp/
 
 # generated files
 **/declarations/
@@ -23,3 +24,5 @@ dist/
 
 # environment variables
 .env
+
+.mops

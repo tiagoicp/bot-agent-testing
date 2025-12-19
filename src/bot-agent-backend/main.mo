@@ -1,5 +1,4 @@
-import Array "mo:base/Array";
-import Iter "mo:base/Iter";
+import Array "mo:core/Array";
 
 persistent actor {
   var agents : [(Nat, Text)] = [];
@@ -18,7 +17,7 @@ persistent actor {
     if (existing != null) {
       return false; // Agent already exists
     };
-    agents := Array.append(agents, [(id, name)]);
+    agents := Array.concat(agents, [(id, name)]);
     return true;
   };
 
@@ -76,10 +75,12 @@ persistent actor {
 
   // Helper function to find agent index by ID
   private func findAgentIndex(id : Nat) : ?Nat {
-    for (i in Iter.range(0, agents.size() - 1)) {
+    var i = 0;
+    while (i < agents.size()) {
       if (agents[i].0 == id) {
         return ?i;
       };
+      i += 1;
     };
     return null;
   };
