@@ -1,6 +1,5 @@
 {
-  "scripts": {
-    "build": "dfx build",
+  "scripts": {    
     "test": "tsc && bun test"
   },
   "dependencies": {
