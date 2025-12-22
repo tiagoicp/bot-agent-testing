@@ -1,0 +1,33 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main      
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Dependencies
+        shell: bash
+        run: bun i --frozen-lockfile
+
+      - name: Setup DFX
+        uses: dfinity/setup-dfx@main
+        with:
+          dfx-version: 'auto'
+
+      - name: Build
+        run: bun run build
+      
+      - name: run tests
+        run: bun run test
