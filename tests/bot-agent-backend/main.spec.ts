@@ -5,8 +5,8 @@ import { PocketIc } from '@dfinity/pic';
 import { Principal } from '@dfinity/principal';
 
 // Import generated types for your canister
-import { type _SERVICE } from '../../src/declarations/bot-agent-backend/bot-agent-backend.did';
-import { idlFactory } from '../../src/declarations/bot-agent-backend';
+import { type _SERVICE } from '../../.dfx/local/canisters/bot-agent-backend/service.did';
+import { idlFactory } from '../../.dfx/local/canisters/bot-agent-backend/service.did.js';
 
 // Define the path to your canister's WASM file
 export const WASM_PATH = resolve(
