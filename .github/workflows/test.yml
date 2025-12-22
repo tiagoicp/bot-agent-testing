@@ -25,7 +25,13 @@ jobs:
         with:
           dfx-version: 'auto'
 
-      - name: Create & Build
+      - name: Setup Mops
+        uses: dfinity/setup-mops@v1        
+
+      - name: Install Mops Packages
+        run: mops install
+
+      - name: Build
         run: |
           dfx start --background
           dfx deploy
