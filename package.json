@@ -1,5 +1,7 @@
 {
   "scripts": {
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
     "test": "tsc && bun test"
   },
   "dependencies": {
