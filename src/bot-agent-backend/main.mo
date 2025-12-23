@@ -8,7 +8,7 @@ persistent actor {
   };
 
   public query func talk_to(ai_agent_id : Nat, message : Text) : async Text {
-    return "Response from AI Agent " # debug_show(ai_agent_id) # ": " # message;
+    return "Response from AI Agent " # debug_show (ai_agent_id) # ": " # message;
   };
 
   // Create a new agent
@@ -34,9 +34,12 @@ persistent actor {
         return false; // Agent not found
       };
       case (?idx) {
-        agents := Array.tabulate<(Nat, Text)>(agents.size(), func(i : Nat) : (Nat, Text) {
-          if (i == idx) { (id, new_name) } else { agents[i] };
-        });
+        agents := Array.tabulate<(Nat, Text)>(
+          agents.size(),
+          func(i : Nat) : (Nat, Text) {
+            if (i == idx) { (id, new_name) } else { agents[i] };
+          },
+        );
         return true;
       };
     };
@@ -50,9 +53,12 @@ persistent actor {
         return false; // Agent not found
       };
       case (?idx) {
-        agents := Array.tabulate<(Nat, Text)>(agents.size() - 1, func(i : Nat) : (Nat, Text) {
-          if (i < idx) { agents[i] } else { agents[i + 1] };
-        });
+        agents := Array.tabulate<(Nat, Text)>(
+          agents.size() - 1,
+          func(i : Nat) : (Nat, Text) {
+            if (i < idx) { agents[i] } else { agents[i + 1] };
+          },
+        );
         return true;
       };
     };
