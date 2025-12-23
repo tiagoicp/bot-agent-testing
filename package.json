@@ -12,5 +12,7 @@
     "prettier-plugin-motoko": "^0.12.5",
     "typescript": "^5.9.3"
   },
-  "trustedDependencies": ["@dfinity/pic"]
+  "trustedDependencies": [
+    "@dfinity/pic"
+  ]
 }
