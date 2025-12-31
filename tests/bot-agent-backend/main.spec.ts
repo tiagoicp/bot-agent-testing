@@ -26,7 +26,7 @@ export const WASM_PATH = resolve(
   "local",
   "canisters",
   "bot-agent-backend",
-  "bot-agent-backend.wasm"
+  "bot-agent-backend.wasm",
 );
 
 // The `describe` function is used to group tests together
@@ -85,7 +85,7 @@ describe("Bot Agent Backend", () => {
         const result = await actor.add_admin(newAdminPrincipal);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
-          "Anonymous users cannot be admins"
+          "Anonymous users cannot be admins",
         );
       });
 
@@ -102,7 +102,7 @@ describe("Bot Agent Backend", () => {
         const result = await actor.add_admin(samePrincipal);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
-          "Principal is already an admin"
+          "Principal is already an admin",
         );
       });
     });

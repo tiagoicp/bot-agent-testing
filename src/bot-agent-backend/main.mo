@@ -1,12 +1,26 @@
-import Array "mo:core/Array";
 import Result "mo:core/Result";
 import Principal "mo:core/Principal";
+import Map "mo:core/Map";
+import Nat "mo:core/Nat";
 import AdminManagement "./admin-management";
 
 persistent actor {
-  var agents : [(Nat, Text)] = [];
+  var agents = Map.empty<Nat, Text>();
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
+
+  public type Provider = {
+    #openai;
+    #llmcanister;
+    #groq;
+  };
+
+  public type Agent = {
+    id : Nat;
+    name : Text;
+    provider : Provider;
+    model : Text;
+  };
 
   public query func greet(name : Text) : async Text {
     return "Hello, " # name # "!";
@@ -26,14 +40,14 @@ persistent actor {
       return #err("Agent name cannot be empty");
     };
     let id = nextAgentId;
-    agents := Array.concat(agents, [(id, name)]);
+    Map.add(agents, Nat.compare, id, name);
     nextAgentId += 1;
     return #ok(id);
   };
 
   // Read/Get an agent
-  public query func get_agent(id : Nat) : async ?(Nat, Text) {
-    return findAgent(id);
+  public query func get_agent(id : Nat) : async ?Text {
+    return Map.get(agents, Nat.compare, id);
   };
 
   // Update an agent
@@ -42,18 +56,12 @@ persistent actor {
       return #err("Only admins can update agents");
     };
 
-    let index = findAgentIndex(id);
-    switch (index) {
+    switch (Map.get(agents, Nat.compare, id)) {
       case (null) {
         return #err("Agent not found");
       };
-      case (?idx) {
-        agents := Array.tabulate<(Nat, Text)>(
-          agents.size(),
-          func(i : Nat) : (Nat, Text) {
-            if (i == idx) { (id, new_name) } else { agents[i] };
-          },
-        );
+      case (?_) {
+        Map.add(agents, Nat.compare, id, new_name);
         return #ok(true);
       };
     };
@@ -65,18 +73,12 @@ persistent actor {
       return #err("Only admins can delete agents");
     };
 
-    let index = findAgentIndex(id);
-    switch (index) {
+    switch (Map.get(agents, Nat.compare, id)) {
       case (null) {
         return #err("Agent not found");
       };
-      case (?idx) {
-        agents := Array.tabulate<(Nat, Text)>(
-          agents.size() - 1,
-          func(i : Nat) : (Nat, Text) {
-            if (i < idx) { agents[i] } else { agents[i + 1] };
-          },
-        );
+      case (?_) {
+        Map.remove(agents, Nat.compare, id);
         return #ok(true);
       };
     };
@@ -84,29 +86,7 @@ persistent actor {
 
   // List all agents
   public query func list_agents() : async [(Nat, Text)] {
-    return agents;
-  };
-
-  // Helper function to find agent by ID
-  private func findAgent(id : Nat) : ?(Nat, Text) {
-    for (agent in agents.vals()) {
-      if (agent.0 == id) {
-        return ?agent;
-      };
-    };
-    return null;
-  };
-
-  // Helper function to find agent index by ID
-  private func findAgentIndex(id : Nat) : ?Nat {
-    var i = 0;
-    while (i < agents.size()) {
-      if (agents[i].0 == id) {
-        return ?i;
-      };
-      i += 1;
-    };
-    return null;
+    return Map.toArray(agents);
   };
 
   // Add a new admin
