@@ -41,7 +41,7 @@ persistent actor {
   };
 
   // List all agents
-  public query func list_agents() : async [(Nat, AgentManagement.Agent)] {
+  public query func list_agents() : async [AgentManagement.Agent] {
     return AgentManagement.list_agents(agents);
   };
 

@@ -1,6 +1,7 @@
 import Result "mo:core/Result";
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 import AdminManagement "./admin-management";
 
 module {
@@ -93,7 +94,7 @@ module {
   };
 
   // List all agents
-  public func list_agents(agents : Map.Map<Nat, Agent>) : [(Nat, Agent)] {
-    return Map.toArray(agents);
+  public func list_agents(agents : Map.Map<Nat, Agent>) : [Agent] {
+    return Iter.toArray(Map.values(agents));
   };
 };

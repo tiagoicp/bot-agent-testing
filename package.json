@@ -2,7 +2,7 @@
   "scripts": {
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "test": "tsc && bun test"
+    "test": "tsc && dfx build && bun test"
   },
   "dependencies": {
     "@dfinity/agent": "^3.4.3",
