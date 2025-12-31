@@ -5,7 +5,7 @@ import Nat "mo:core/Nat";
 import AdminManagement "./admin-management";
 
 persistent actor {
-  var agents = Map.empty<Nat, Text>();
+  var agents = Map.empty<Nat, Agent>();
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
 
@@ -31,7 +31,7 @@ persistent actor {
   };
 
   // Create a new agent
-  public shared ({ caller }) func create_agent(name : Text) : async Result.Result<Nat, Text> {
+  public shared ({ caller }) func create_agent(name : Text, provider : Provider, model : Text) : async Result.Result<Nat, Text> {
     if (not AdminManagement.isAdmin(caller, admins)) {
       return #err("Only admins can add new agents");
     };
@@ -40,18 +40,24 @@ persistent actor {
       return #err("Agent name cannot be empty");
     };
     let id = nextAgentId;
-    Map.add(agents, Nat.compare, id, name);
+    let agent : Agent = {
+      id = id;
+      name = name;
+      provider = provider;
+      model = model;
+    };
+    Map.add(agents, Nat.compare, id, agent);
     nextAgentId += 1;
     return #ok(id);
   };
 
   // Read/Get an agent
-  public query func get_agent(id : Nat) : async ?Text {
+  public query func get_agent(id : Nat) : async ?Agent {
     return Map.get(agents, Nat.compare, id);
   };
 
   // Update an agent
-  public shared ({ caller }) func update_agent(id : Nat, new_name : Text) : async Result.Result<Bool, Text> {
+  public shared ({ caller }) func update_agent(id : Nat, new_name : ?Text, new_provider : ?Provider, new_model : ?Text) : async Result.Result<Bool, Text> {
     if (not AdminManagement.isAdmin(caller, admins)) {
       return #err("Only admins can update agents");
     };
@@ -60,8 +66,23 @@ persistent actor {
       case (null) {
         return #err("Agent not found");
       };
-      case (?_) {
-        Map.add(agents, Nat.compare, id, new_name);
+      case (?existingAgent) {
+        let updatedAgent : Agent = {
+          id = id;
+          name = switch (new_name) {
+            case (null) { existingAgent.name };
+            case (?name) { name };
+          };
+          provider = switch (new_provider) {
+            case (null) { existingAgent.provider };
+            case (?provider) { provider };
+          };
+          model = switch (new_model) {
+            case (null) { existingAgent.model };
+            case (?model) { model };
+          };
+        };
+        Map.add(agents, Nat.compare, id, updatedAgent);
         return #ok(true);
       };
     };
@@ -85,7 +106,7 @@ persistent actor {
   };
 
   // List all agents
-  public query func list_agents() : async [(Nat, Text)] {
+  public query func list_agents() : async [(Nat, Agent)] {
     return Map.toArray(agents);
   };
 
