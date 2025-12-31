@@ -1,7 +1,12 @@
 import Array "mo:core/Array";
+import Result "mo:core/Result";
+import Principal "mo:core/Principal";
+import AdminManagement "./admin-management";
 
 persistent actor {
   var agents : [(Nat, Text)] = [];
+  var nextAgentId : Nat = 0;
+  var admins : [Principal] = [];
 
   public query func greet(name : Text) : async Text {
     return "Hello, " # name # "!";
@@ -12,13 +17,18 @@ persistent actor {
   };
 
   // Create a new agent
-  public func create_agent(id : Nat, name : Text) : async Bool {
-    let existing = findAgent(id);
-    if (existing != null) {
-      return false; // Agent already exists
+  public shared ({ caller }) func create_agent(name : Text) : async Result.Result<Nat, Text> {
+    if (not AdminManagement.isAdmin(caller, admins)) {
+      return #err("Only admins can add new agents");
     };
+
+    if (name == "") {
+      return #err("Agent name cannot be empty");
+    };
+    let id = nextAgentId;
     agents := Array.concat(agents, [(id, name)]);
-    return true;
+    nextAgentId += 1;
+    return #ok(id);
   };
 
   // Read/Get an agent
@@ -27,11 +37,15 @@ persistent actor {
   };
 
   // Update an agent
-  public func update_agent(id : Nat, new_name : Text) : async Bool {
+  public shared ({ caller }) func update_agent(id : Nat, new_name : Text) : async Result.Result<Bool, Text> {
+    if (not AdminManagement.isAdmin(caller, admins)) {
+      return #err("Only admins can update agents");
+    };
+
     let index = findAgentIndex(id);
     switch (index) {
       case (null) {
-        return false; // Agent not found
+        return #err("Agent not found");
       };
       case (?idx) {
         agents := Array.tabulate<(Nat, Text)>(
@@ -40,17 +54,21 @@ persistent actor {
             if (i == idx) { (id, new_name) } else { agents[i] };
           },
         );
-        return true;
+        return #ok(true);
       };
     };
   };
 
   // Delete an agent
-  public func delete_agent(id : Nat) : async Bool {
+  public shared ({ caller }) func delete_agent(id : Nat) : async Result.Result<Bool, Text> {
+    if (not AdminManagement.isAdmin(caller, admins)) {
+      return #err("Only admins can delete agents");
+    };
+
     let index = findAgentIndex(id);
     switch (index) {
       case (null) {
-        return false; // Agent not found
+        return #err("Agent not found");
       };
       case (?idx) {
         agents := Array.tabulate<(Nat, Text)>(
@@ -59,7 +77,7 @@ persistent actor {
             if (i < idx) { agents[i] } else { agents[i + 1] };
           },
         );
-        return true;
+        return #ok(true);
       };
     };
   };
@@ -89,5 +107,31 @@ persistent actor {
       i += 1;
     };
     return null;
+  };
+
+  // Add a new admin
+  public shared ({ caller }) func add_admin(new_admin : Principal) : async Result.Result<(), Text> {
+    admins := AdminManagement.initializeFirstAdmin(caller, admins);
+
+    let validation = AdminManagement.validateNewAdmin(new_admin, caller, admins);
+    switch (validation) {
+      case (#err(msg)) {
+        return #err(msg);
+      };
+      case (#ok(())) {
+        admins := AdminManagement.addAdminToList(new_admin, admins);
+        return #ok(());
+      };
+    };
+  };
+
+  // Get list of admins
+  public query func get_admins() : async [Principal] {
+    return admins;
+  };
+
+  // Check if caller is admin
+  public shared ({ caller }) func is_caller_admin() : async Bool {
+    return AdminManagement.isAdmin(caller, admins);
   };
 };
