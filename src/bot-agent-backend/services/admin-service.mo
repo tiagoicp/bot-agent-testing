@@ -1,7 +1,7 @@
 import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 
-module AdminManagement {
+module {
   // Check if a principal is an admin
   public func isAdmin(principal : Principal, admins : [Principal]) : Bool {
     for (admin in admins.vals()) {

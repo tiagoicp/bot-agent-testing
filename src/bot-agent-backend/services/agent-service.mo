@@ -2,7 +2,7 @@ import Result "mo:core/Result";
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
-import AdminManagement "./admin-management";
+import AdminService "./admin-service";
 
 module {
   public type Provider = {
@@ -20,7 +20,7 @@ module {
 
   // Create a new agent
   public func create_agent(name : Text, provider : Provider, model : Text, caller : Principal, admins : [Principal], agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : (Result.Result<Nat, Text>, Nat) {
-    if (not AdminManagement.isAdmin(caller, admins)) {
+    if (not AdminService.isAdmin(caller, admins)) {
       return (#err("Only admins can add new agents"), nextAgentId);
     };
 
@@ -46,7 +46,7 @@ module {
 
   // Update an agent
   public func update_agent(id : Nat, new_name : ?Text, new_provider : ?Provider, new_model : ?Text, caller : Principal, admins : [Principal], agents : Map.Map<Nat, Agent>) : Result.Result<Bool, Text> {
-    if (not AdminManagement.isAdmin(caller, admins)) {
+    if (not AdminService.isAdmin(caller, admins)) {
       return #err("Only admins can update agents");
     };
 
@@ -78,7 +78,7 @@ module {
 
   // Delete an agent
   public func delete_agent(id : Nat, caller : Principal, admins : [Principal], agents : Map.Map<Nat, Agent>) : Result.Result<Bool, Text> {
-    if (not AdminManagement.isAdmin(caller, admins)) {
+    if (not AdminService.isAdmin(caller, admins)) {
       return #err("Only admins can delete agents");
     };
 
