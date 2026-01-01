@@ -30,7 +30,7 @@ persistent actor {
       caller,
       ai_agent_id,
       {
-        author = #user(caller);
+        author = #user;
         content = message;
         timestamp = Time.now();
       },

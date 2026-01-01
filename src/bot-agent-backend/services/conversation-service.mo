@@ -8,8 +8,8 @@ import Result "mo:core/Result";
 module {
   public type Message = {
     author : {
-      #user : Principal;
-      #agent : Nat;
+      #user;
+      #agent;
     };
     content : Text;
     timestamp : Int;
