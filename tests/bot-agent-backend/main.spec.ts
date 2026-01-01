@@ -355,4 +355,127 @@ describe("Bot Agent Backend", () => {
       });
     });
   });
+
+  // ============ CONVERSATION TESTS ============
+
+  describe("Conversation Management", () => {
+    let adminIdentity: any;
+    let adminPrincipal: Principal;
+    let userIdentity: any;
+    let userPrincipal: Principal;
+    let agentId: bigint;
+
+    beforeEach(async () => {
+      // Set up an admin
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.add_admin(adminPrincipal);
+
+      // Create a test agent
+      const createResult = await actor.create_agent(
+        "Test Conversation Agent",
+        { openai: null },
+        "gpt-4",
+      );
+      agentId = "ok" in createResult ? createResult.ok : null;
+
+      // Set up a regular user
+      userIdentity = generateRandomIdentity();
+      userPrincipal = userIdentity.getPrincipal();
+      actor.setIdentity(userIdentity);
+    });
+
+    describe("talk_to", () => {
+      it("should reject anonymous users from sending messages", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.talk_to(agentId, "Hello Agent");
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should accept message from authenticated user", async () => {
+        const result = await actor.talk_to(agentId, "Hello Agent");
+        expect("ok" in result).toBe(true);
+      });
+    });
+
+    describe("get_conversation", () => {
+      it("should return err message when no conversation exists with agent", async () => {
+        const result = await actor.get_conversation(agentId);
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "No conversation found with agent " + agentId,
+        );
+      });
+
+      it("should contain correct message content in conversation history", async () => {
+        const testMessage = "This is a test message";
+        await actor.talk_to(agentId, testMessage);
+
+        const result = await actor.get_conversation(agentId);
+        expect("ok" in result).toBe(true);
+        const messages = "ok" in result ? result.ok : [];
+
+        const userMessage = messages.find(
+          (msg: any) => msg.author && "user" in msg.author,
+        );
+        expect(userMessage).toBeDefined();
+        expect(userMessage?.content).toEqual(testMessage);
+      });
+
+      it("should maintain conversation history across multiple messages", async () => {
+        const message1 = "First message";
+        const message2 = "Second message";
+        const message3 = "Third message";
+
+        await actor.talk_to(agentId, message1);
+        await actor.talk_to(agentId, message2);
+        await actor.talk_to(agentId, message3);
+
+        const result = await actor.get_conversation(agentId);
+        expect("ok" in result).toBe(true);
+        const messages = "ok" in result ? result.ok : [];
+        expect(messages.length).toBeGreaterThanOrEqual(3);
+      });
+
+      it("should isolate conversations between different agents", async () => {
+        // Create another agent
+        actor.setIdentity(adminIdentity);
+        const createResult2 = await actor.create_agent(
+          "Another Agent",
+          { groq: null },
+          "mixtral",
+        );
+        const agentId2 = "ok" in createResult2 ? createResult2.ok : null;
+
+        // Switch back to user and send messages to different agents
+        actor.setIdentity(userIdentity);
+        const message1 = "Message for first agent";
+        const message2 = "Message for second agent";
+
+        await actor.talk_to(agentId, message1);
+        await actor.talk_to(agentId2, message2);
+
+        // Check conversation history for first agent
+        const result1 = await actor.get_conversation(agentId);
+        const messages1 = "ok" in result1 ? result1.ok : [];
+        const foundMsg1 = messages1.some(
+          (msg: any) => msg.content === message1,
+        );
+        expect(foundMsg1).toBe(true);
+
+        // Check conversation history for second agent
+        const result2 = await actor.get_conversation(agentId2);
+        const messages2 = "ok" in result2 ? result2.ok : [];
+        const foundMsg2 = messages2.some(
+          (msg: any) => msg.content === message2,
+        );
+        expect(foundMsg2).toBe(true);
+      });
+    });
+  });
 });
