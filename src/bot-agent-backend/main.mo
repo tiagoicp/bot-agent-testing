@@ -8,22 +8,22 @@ import Text "mo:core/Text";
 import AdminManagement "./admin-management";
 import AgentManagement "./agent-management";
 
-type Message = {
-  author : {
-    #user : Principal;
-    #agent : Nat;
-  };
-  content : Text;
-  timestamp : Int;
-};
-
-type ConversationKey = (Principal, Nat);
-
 persistent actor {
   var agents = Map.empty<Nat, AgentManagement.Agent>();
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
   var conversations = Map.empty<ConversationKey, List.List<Message>>();
+
+  type Message = {
+    author : {
+      #user : Principal;
+      #agent : Nat;
+    };
+    content : Text;
+    timestamp : Int;
+  };
+
+  type ConversationKey = (Principal, Nat);
 
   // Helper function to create a conversation key
   private func makeConversationKey(principal : Principal, agentId : Nat) : ConversationKey {
@@ -74,7 +74,11 @@ persistent actor {
     };
   };
 
-  public shared ({ caller }) func talk_to(ai_agent_id : Nat, message : Text) : async Text {
+  public shared ({ caller }) func talk_to(ai_agent_id : Nat, message : Text) : async Result.Result<Text, Text> {
+    if (Principal.isAnonymous(caller)) {
+      return #err("Please login before calling this function");
+    };
+
     addMessageToConversation(
       caller,
       ai_agent_id,
@@ -84,7 +88,8 @@ persistent actor {
         timestamp = Time.now();
       },
     );
-    return "Response from AI Agent " # debug_show (ai_agent_id) # ": " # message;
+
+    return #ok("Response from AI Agent " # debug_show (ai_agent_id) # ": " # message);
   };
 
   // Create a new agent
