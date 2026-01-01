@@ -66,13 +66,6 @@ describe("Bot Agent Backend", () => {
     await pic.tearDown();
   });
 
-  // The `it` function is used to define individual tests
-  it("should greet a user", async () => {
-    const response = await actor.greet("cool");
-
-    expect(response).toEqual("Hello, cool!");
-  });
-
   // ============ ADMIN MANAGEMENT TESTS ============
 
   describe("Admin Management", () => {

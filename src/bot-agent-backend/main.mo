@@ -10,11 +10,8 @@ persistent actor {
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
 
-  public query func greet(name : Text) : async Text {
-    return "Hello, " # name # "!";
-  };
-
-  public query func talk_to(ai_agent_id : Nat, message : Text) : async Text {
+  // Interact with an AI agent
+  public shared ({ caller }) func talk_to(ai_agent_id : Nat, message : Text) : async Text {
     return "Response from AI Agent " # debug_show (ai_agent_id) # ": " # message;
   };
 
