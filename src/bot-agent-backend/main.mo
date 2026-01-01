@@ -7,66 +7,17 @@ import List "mo:core/List";
 import Text "mo:core/Text";
 import AdminManagement "./admin-management";
 import AgentManagement "./agent-management";
+import ConversationService "./conversation-service";
 
 persistent actor {
   var agents = Map.empty<Nat, AgentManagement.Agent>();
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
-  var conversations = Map.empty<ConversationKey, List.List<Message>>();
-
-  type Message = {
-    author : {
-      #user : Principal;
-      #agent : Nat;
-    };
-    content : Text;
-    timestamp : Int;
-  };
-
-  type ConversationKey = (Principal, Nat);
-
-  // Comparison function for ConversationKey
-  private func conversationKeyCompare(a : ConversationKey, b : ConversationKey) : {
-    #less;
-    #equal;
-    #greater;
-  } {
-    switch (Principal.compare(a.0, b.0)) {
-      case (#equal) {
-        Nat.compare(a.1, b.1);
-      };
-      case (other) {
-        other;
-      };
-    };
-  };
-
-  // Add a message to a conversation
-  private func addMessageToConversation(principal : Principal, agentId : Nat, message : Message) {
-    let key = (principal, agentId);
-    switch (Map.get(conversations, conversationKeyCompare, key)) {
-      case (null) {
-        let newList = List.empty<Message>();
-        List.add(newList, message);
-        Map.add(conversations, conversationKeyCompare, key, newList);
-      };
-      case (?existingList) {
-        List.add(existingList, message);
-      };
-    };
-  };
+  var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
 
   // Get conversation history
-  public shared ({ caller }) func get_conversation(ai_agent_id : Nat) : async Result.Result<[Message], Text> {
-    let key = (caller, ai_agent_id);
-    switch (Map.get(conversations, conversationKeyCompare, key)) {
-      case (null) {
-        return #err("No conversation found with agent " # debug_show (ai_agent_id));
-      };
-      case (?messages) {
-        return #ok(List.toArray(messages));
-      };
-    };
+  public shared ({ caller }) func get_conversation(ai_agent_id : Nat) : async Result.Result<[ConversationService.Message], Text> {
+    return ConversationService.getConversation(conversations, caller, ai_agent_id);
   };
 
   public shared ({ caller }) func talk_to(ai_agent_id : Nat, message : Text) : async Result.Result<Text, Text> {
@@ -74,7 +25,8 @@ persistent actor {
       return #err("Please login before calling this function");
     };
 
-    addMessageToConversation(
+    ConversationService.addMessageToConversation(
+      conversations,
       caller,
       ai_agent_id,
       {
