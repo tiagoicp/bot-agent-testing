@@ -25,11 +25,6 @@ persistent actor {
 
   type ConversationKey = (Principal, Nat);
 
-  // Helper function to create a conversation key
-  private func makeConversationKey(principal : Principal, agentId : Nat) : ConversationKey {
-    (principal, agentId);
-  };
-
   // Comparison function for ConversationKey
   private func conversationKeyCompare(a : ConversationKey, b : ConversationKey) : {
     #less;
@@ -48,7 +43,7 @@ persistent actor {
 
   // Add a message to a conversation
   private func addMessageToConversation(principal : Principal, agentId : Nat, message : Message) {
-    let key = makeConversationKey(principal, agentId);
+    let key = (principal, agentId);
     switch (Map.get(conversations, conversationKeyCompare, key)) {
       case (null) {
         let newList = List.empty<Message>();
@@ -62,14 +57,14 @@ persistent actor {
   };
 
   // Get conversation history
-  public query func get_conversation(principal : Principal, ai_agent_id : Nat) : async [Message] {
-    let key = makeConversationKey(principal, ai_agent_id);
+  public shared ({ caller }) func get_conversation(ai_agent_id : Nat) : async Result.Result<[Message], Text> {
+    let key = (caller, ai_agent_id);
     switch (Map.get(conversations, conversationKeyCompare, key)) {
       case (null) {
-        return [];
+        return #err("No conversation found with agent " # debug_show (ai_agent_id));
       };
       case (?messages) {
-        return List.toArray(messages);
+        return #ok(List.toArray(messages));
       };
     };
   };
