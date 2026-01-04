@@ -8,6 +8,7 @@ import Text "mo:core/Text";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
 import ConversationService "./services/conversation-service";
+import LLMWrapper "./wrappers/llm-wrapper";
 
 persistent actor {
   var agents = Map.empty<Nat, AgentService.Agent>();
@@ -36,7 +37,31 @@ persistent actor {
       },
     );
 
-    return #ok("Response from AI Agent " # debug_show (ai_agent_id) # ": " # message);
+    // decide which tool?
+    // for now, just mo:llm
+
+    // call the tool
+    // call chat mo:llm with the conversation history
+    // Initialize LLM wrapper with default model
+    let llm_wrapper = LLMWrapper.LLMWrapper(null);
+    var response = await llm_wrapper.chat(message);
+
+    // evaluate response and decide to terminate loop or continue
+    // for now, just terminate
+
+    // Store and Deliver response
+    ConversationService.addMessageToConversation(
+      conversations,
+      caller,
+      ai_agent_id,
+      {
+        author = #agent;
+        content = response;
+        timestamp = Time.now();
+      },
+    );
+
+    return #ok("Response from AI Agent " # debug_show (ai_agent_id) # ": " # response);
   };
 
   // Create a new agent

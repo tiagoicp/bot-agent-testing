@@ -13,7 +13,8 @@
     },
     "bot-agent-backend": {
       "main": "src/bot-agent-backend/main.mo",
-      "type": "motoko"
+      "type": "motoko",
+      "dependencies": ["llm"]
     }
   },
   "defaults": {
