@@ -4,6 +4,9 @@ Testing repo for learning more about bot and AI agents.
 
 Link for backend with Internet Identity login button working: http://127.0.0.1:4943/?canisterId=uzt4z-lp777-77774-qaabq-cai&id=uxrrr-q7777-77774-qaaaq-cai&ii=http://u6s2n-gx777-77774-qaaba-cai.localhost:4943/
 
+Install Lintoko (https://github.com/caffeinelabs/lintoko) with:
+`curl --proto '=https' --tlsv1.2 -LsSf https://github.com/caffeinelabs/lintoko/releases/download/v0.7.0/lintoko-installer.sh | sh`
+
 ---
 
 # `bot-agent`
