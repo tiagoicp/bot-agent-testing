@@ -13,6 +13,8 @@ module {
   };
 
   // Initialize first admin (first caller becomes admin)
+  // IMPORTANT: TODO: review security implications before use by third parties
+  // SECURITY WARNING: Ensure there isn't any chance of another party to front run the first caller to addAdmin().
   public func initializeFirstAdmin(caller : Principal, admins : [Principal]) : [Principal] {
     if (admins.size() == 0 and caller != getAnonymousPrincipal()) {
       Array.concat(admins, [caller]);
