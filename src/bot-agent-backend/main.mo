@@ -48,8 +48,8 @@ persistent actor {
       // call the tool
       // call chat mo:llm with the conversation history
       // Initialize LLM wrapper with default model
-      let llm_wrapper = LLMWrapper.LLMWrapper(null);
-      var response = await llm_wrapper.chat(message);
+      let llmWrapper = LLMWrapper.LLMWrapper(null);
+      var response = await llmWrapper.chat(message);
 
       // evaluate response and decide to terminate loop or continue
       // for now, just terminate
