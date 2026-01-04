@@ -7,7 +7,7 @@ import Text "mo:core/Text";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
 import ConversationService "./services/conversation-service";
-import LLMWrapper "./wrappers/llm-wrapper";
+// import LLMWrapper "./wrappers/llm-wrapper";
 
 persistent actor {
   var agents = Map.empty<Nat, AgentService.Agent>();
@@ -16,14 +16,14 @@ persistent actor {
   var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
 
   // Get conversation history
-  public shared ({ caller }) func getConversation(ai_agent_id : Nat) : async {
+  public shared ({ caller }) func getConversation(aiAgentId : Nat) : async {
     #ok : [ConversationService.Message];
     #err : Text;
   } {
-    ConversationService.getConversation(conversations, caller, ai_agent_id);
+    ConversationService.getConversation(conversations, caller, aiAgentId);
   };
 
-  public shared ({ caller }) func talkTo(ai_agent_id : Nat, message : Text) : async {
+  public shared ({ caller }) func talkTo(aiAgentId : Nat, message : Text) : async {
     #ok : Text;
     #err : Text;
   } {

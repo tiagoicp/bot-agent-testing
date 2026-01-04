@@ -22,7 +22,7 @@ module {
   };
 
   // Validate new admin before adding
-  public func validateNewAdmin(new_admin : Principal, caller : Principal, admins : [Principal]) : {
+  public func validateNewAdmin(newAdmin : Principal, caller : Principal, admins : [Principal]) : {
     #ok : ();
     #err : Text;
   } {
@@ -34,7 +34,7 @@ module {
       return #err("Only admins can add new admins");
     };
 
-    if (isAdmin(new_admin, admins)) {
+    if (isAdmin(newAdmin, admins)) {
       #err("Principal is already an admin");
     } else {
       #ok(());
@@ -42,8 +42,8 @@ module {
   };
 
   // Add a new admin to the list
-  public func addAdminToList(new_admin : Principal, admins : [Principal]) : [Principal] {
-    Array.concat(admins, [new_admin]);
+  public func addAdminToList(newAdmin : Principal, admins : [Principal]) : [Principal] {
+    Array.concat(admins, [newAdmin]);
   };
 
   private func getAnonymousPrincipal() : Principal {

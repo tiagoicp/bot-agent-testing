@@ -1,0 +1,8 @@
+name = "case-parameters"
+description = "Function parameters should use camelCase."
+query = """
+(var_pat 
+  (identifier) @ident @error
+  (#match? @ident "_")
+  (#parent-is? @ident "func_dec"))
+"""
