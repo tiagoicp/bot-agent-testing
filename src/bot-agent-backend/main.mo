@@ -34,7 +34,7 @@ persistent actor {
       ConversationService.addMessageToConversation(
         conversations,
         caller,
-        ai_agent_id,
+        aiAgentId,
         {
           author = #user;
           content = message;
@@ -60,7 +60,7 @@ persistent actor {
       ConversationService.addMessageToConversation(
         conversations,
         caller,
-        ai_agent_id,
+        aiAgentId,
         {
           author = #agent;
           content = response;
@@ -68,7 +68,7 @@ persistent actor {
         },
       );
 
-      #ok("Response from AI Agent " # debug_show (ai_agent_id) # ": " # response);
+      #ok("Response from AI Agent " # debug_show (aiAgentId) # ": " # response);
     };
   };
 
