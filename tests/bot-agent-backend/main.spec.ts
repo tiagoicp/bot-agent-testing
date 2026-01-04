@@ -75,7 +75,7 @@ describe("Bot Agent Backend", () => {
         actor.setPrincipal(Principal.anonymous());
 
         const newAdminPrincipal = generateTestPrincipal(1);
-        const result = await actor.add_admin(newAdminPrincipal);
+        const result = await actor.addAdmin(newAdminPrincipal);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
           "Anonymous users cannot be admins",
@@ -89,10 +89,10 @@ describe("Bot Agent Backend", () => {
         actor.setIdentity(generateRandomIdentity());
 
         // add first admin
-        await actor.add_admin(samePrincipal);
+        await actor.addAdmin(samePrincipal);
 
         // Second call should fail due to being duplicate
-        const result = await actor.add_admin(samePrincipal);
+        const result = await actor.addAdmin(samePrincipal);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
           "Principal is already an admin",
@@ -108,9 +108,9 @@ describe("Bot Agent Backend", () => {
         actor.setIdentity(generateRandomIdentity());
 
         // add first admin
-        await actor.add_admin(somePrincipal);
+        await actor.addAdmin(somePrincipal);
 
-        const adminsList = await actor.get_admins();
+        const adminsList = await actor.getAdmins();
         expect(adminsList[1]).toEqual(somePrincipal);
       });
     });
@@ -118,7 +118,7 @@ describe("Bot Agent Backend", () => {
     describe("is_caller_admin", () => {
       it("should return false for non-admin caller", async () => {
         // Without setting up as admin, caller should not be admin
-        const isAdmin = await actor.is_caller_admin();
+        const isAdmin = await actor.isCallerAdmin();
         expect(isAdmin).toBe(false);
       });
 
@@ -130,10 +130,10 @@ describe("Bot Agent Backend", () => {
         actor.setIdentity(identity);
 
         // Add the caller as admin
-        await actor.add_admin(principalOfIdentity);
+        await actor.addAdmin(principalOfIdentity);
 
         // Now check if caller is admin
-        const isAdmin = await actor.is_caller_admin();
+        const isAdmin = await actor.isCallerAdmin();
         expect(isAdmin).toBe(true);
       });
     });
@@ -150,7 +150,7 @@ describe("Bot Agent Backend", () => {
       adminIdentity = generateRandomIdentity();
       adminPrincipal = adminIdentity.getPrincipal();
       actor.setIdentity(adminIdentity);
-      await actor.add_admin(adminPrincipal);
+      await actor.addAdmin(adminPrincipal);
     });
 
     describe("create_agent", () => {
@@ -158,7 +158,7 @@ describe("Bot Agent Backend", () => {
         const nonAdminIdentity = generateRandomIdentity();
         actor.setIdentity(nonAdminIdentity);
 
-        const result = await actor.create_agent(
+        const result = await actor.createAgent(
           "Test Agent",
           { openai: null },
           "gpt-4",
@@ -170,7 +170,7 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should reject agent creation with empty name", async () => {
-        const result = await actor.create_agent("", { openai: null }, "gpt-4");
+        const result = await actor.createAgent("", { openai: null }, "gpt-4");
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
           "Agent name cannot be empty",
@@ -178,7 +178,7 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should successfully create an agent with admin user and all params", async () => {
-        const result = await actor.create_agent(
+        const result = await actor.createAgent(
           "OpenAI Agent",
           { openai: null },
           "gpt-4",
@@ -188,14 +188,14 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should create multiple agents with incrementing IDs", async () => {
-        const result1 = await actor.create_agent(
+        const result1 = await actor.createAgent(
           "Agent 1",
           { openai: null },
           "gpt-4",
         );
         const id1 = "ok" in result1 ? result1.ok : null;
 
-        const result2 = await actor.create_agent(
+        const result2 = await actor.createAgent(
           "Agent 2",
           { llmcanister: null },
           "llama",
@@ -209,21 +209,21 @@ describe("Bot Agent Backend", () => {
 
     describe("get_agent", () => {
       it("should return null for non-existent agent", async () => {
-        const agent = await actor.get_agent(999);
+        const agent = await actor.getAgent(999);
         // Candid handles an optional custom type as an array with 0 or 1 elements
         // an empty array means null in Motoko
         expect(agent).toEqual([]);
       });
 
       it("should return an agent that exists", async () => {
-        const createResult = await actor.create_agent(
+        const createResult = await actor.createAgent(
           "Test Agent",
           { openai: null },
           "gpt-4",
         );
         const agentId = "ok" in createResult ? createResult.ok : null;
 
-        const agent = await actor.get_agent(agentId);
+        const agent = await actor.getAgent(agentId);
         expect(agent.length).toBeGreaterThan(0);
         const agentData = agent[0];
         expect(agentData.id).toEqual(agentId);
@@ -239,7 +239,7 @@ describe("Bot Agent Backend", () => {
         const nonAdminIdentity = generateRandomIdentity();
         actor.setIdentity(nonAdminIdentity);
 
-        const updateResult = await actor.update_agent(
+        const updateResult = await actor.updateAgent(
           0n,
           ["Updated Name"],
           [],
@@ -252,20 +252,20 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should reject update of non-existent agent", async () => {
-        const result = await actor.update_agent(999n, [], [], []);
+        const result = await actor.updateAgent(999n, [], [], []);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual("Agent not found");
       });
 
       it("should update agent name only", async () => {
-        const createResult = await actor.create_agent(
+        const createResult = await actor.createAgent(
           "Original",
           { openai: null },
           "gpt-4",
         );
         const agentId = "ok" in createResult ? createResult.ok : null;
 
-        const updateResult = await actor.update_agent(
+        const updateResult = await actor.updateAgent(
           agentId,
           ["Updated Name"],
           [],
@@ -273,7 +273,7 @@ describe("Bot Agent Backend", () => {
         );
         expect("ok" in updateResult).toBe(true);
 
-        const agent = await actor.get_agent(agentId);
+        const agent = await actor.getAgent(agentId);
         expect(agent.length).toBeGreaterThan(0);
         const agentData = agent[0];
         expect(agentData.name).toEqual("Updated Name");
@@ -281,14 +281,14 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should update all agent fields", async () => {
-        const createResult = await actor.create_agent(
+        const createResult = await actor.createAgent(
           "Original",
           { openai: null },
           "gpt-3.5",
         );
         const agentId = "ok" in createResult ? createResult.ok : null;
 
-        const updateResult = await actor.update_agent(
+        const updateResult = await actor.updateAgent(
           agentId,
           ["New Agent Name"],
           [{ llmcanister: null }],
@@ -296,7 +296,7 @@ describe("Bot Agent Backend", () => {
         );
         expect("ok" in updateResult).toBe(true);
 
-        const agent = await actor.get_agent(agentId);
+        const agent = await actor.getAgent(agentId);
         expect(agent.length).toBeGreaterThan(0);
         const agentData = agent[0];
         expect(agentData.name).toEqual("New Agent Name");
@@ -311,7 +311,7 @@ describe("Bot Agent Backend", () => {
         const nonAdminIdentity = generateRandomIdentity();
         actor.setIdentity(nonAdminIdentity);
 
-        const deleteResult = await actor.delete_agent(0);
+        const deleteResult = await actor.deleteAgent(0);
         expect("err" in deleteResult).toBe(true);
         expect("err" in deleteResult ? deleteResult.err : "").toEqual(
           "Only admins can delete agents",
@@ -319,34 +319,34 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should reject deletion of non-existent agent", async () => {
-        const result = await actor.delete_agent(999);
+        const result = await actor.deleteAgent(999);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual("Agent not found");
       });
 
       it("should successfully delete an agent", async () => {
-        const createResult = await actor.create_agent(
+        const createResult = await actor.createAgent(
           "Agent to Delete",
           { openai: null },
           "gpt-4",
         );
         const agentId = "ok" in createResult ? createResult.ok : null;
 
-        const deleteResult = await actor.delete_agent(agentId);
+        const deleteResult = await actor.deleteAgent(agentId);
         expect("ok" in deleteResult).toBe(true);
 
-        const agent = await actor.get_agent(agentId);
+        const agent = await actor.getAgent(agentId);
         expect(agent).toEqual([]);
       });
     });
 
     describe("list_agents", () => {
       it("should return all created agents", async () => {
-        await actor.create_agent("Agent 1", { openai: null }, "gpt-4");
-        await actor.create_agent("Agent 2", { groq: null }, "mixtral");
-        await actor.create_agent("Agent 3", { llmcanister: null }, "llama2");
+        await actor.createAgent("Agent 1", { openai: null }, "gpt-4");
+        await actor.createAgent("Agent 2", { groq: null }, "mixtral");
+        await actor.createAgent("Agent 3", { llmcanister: null }, "llama2");
 
-        const agents = await actor.list_agents();
+        const agents = await actor.listAgents();
         expect(agents.length).toEqual(3);
         expect(agents[1].id).toEqual(1n);
         expect(agents[1].name).toEqual("Agent 2");
@@ -370,10 +370,10 @@ describe("Bot Agent Backend", () => {
       adminIdentity = generateRandomIdentity();
       adminPrincipal = adminIdentity.getPrincipal();
       actor.setIdentity(adminIdentity);
-      await actor.add_admin(adminPrincipal);
+      await actor.addAdmin(adminPrincipal);
 
       // Create a test agent
-      const createResult = await actor.create_agent(
+      const createResult = await actor.createAgent(
         "Test Conversation Agent",
         { openai: null },
         "gpt-4",
@@ -390,7 +390,7 @@ describe("Bot Agent Backend", () => {
       it("should reject anonymous users from sending messages", async () => {
         actor.setPrincipal(Principal.anonymous());
 
-        const result = await actor.talk_to(agentId, "Hello Agent");
+        const result = await actor.talkTo(agentId, "Hello Agent");
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
           "Please login before calling this function",
@@ -398,14 +398,14 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should accept message from authenticated user", async () => {
-        const result = await actor.talk_to(agentId, "Hello Agent");
+        const result = await actor.talkTo(agentId, "Hello Agent");
         expect("ok" in result).toBe(true);
       });
     });
 
     describe("get_conversation", () => {
       it("should return err message when no conversation exists with agent", async () => {
-        const result = await actor.get_conversation(agentId);
+        const result = await actor.getConversation(agentId);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
           "No conversation found with agent " + agentId,
@@ -414,9 +414,9 @@ describe("Bot Agent Backend", () => {
 
       it("should contain correct message content in conversation history", async () => {
         const testMessage = "This is a test message";
-        await actor.talk_to(agentId, testMessage);
+        await actor.talkTo(agentId, testMessage);
 
-        const result = await actor.get_conversation(agentId);
+        const result = await actor.getConversation(agentId);
         expect("ok" in result).toBe(true);
         const messages = "ok" in result ? result.ok : [];
 
@@ -432,11 +432,11 @@ describe("Bot Agent Backend", () => {
         const message2 = "Second message";
         const message3 = "Third message";
 
-        await actor.talk_to(agentId, message1);
-        await actor.talk_to(agentId, message2);
-        await actor.talk_to(agentId, message3);
+        await actor.talkTo(agentId, message1);
+        await actor.talkTo(agentId, message2);
+        await actor.talkTo(agentId, message3);
 
-        const result = await actor.get_conversation(agentId);
+        const result = await actor.getConversation(agentId);
         expect("ok" in result).toBe(true);
         const messages = "ok" in result ? result.ok : [];
         expect(messages.length).toBeGreaterThanOrEqual(3);
@@ -445,7 +445,7 @@ describe("Bot Agent Backend", () => {
       it("should isolate conversations between different agents", async () => {
         // Create another agent
         actor.setIdentity(adminIdentity);
-        const createResult2 = await actor.create_agent(
+        const createResult2 = await actor.createAgent(
           "Another Agent",
           { groq: null },
           "mixtral",
@@ -457,11 +457,11 @@ describe("Bot Agent Backend", () => {
         const message1 = "Message for first agent";
         const message2 = "Message for second agent";
 
-        await actor.talk_to(agentId, message1);
-        await actor.talk_to(agentId2, message2);
+        await actor.talkTo(agentId, message1);
+        await actor.talkTo(agentId2, message2);
 
         // Check conversation history for first agent
-        const result1 = await actor.get_conversation(agentId);
+        const result1 = await actor.getConversation(agentId);
         const messages1 = "ok" in result1 ? result1.ok : [];
         const foundMsg1 = messages1.some(
           (msg: any) => msg.content === message1,
@@ -469,7 +469,7 @@ describe("Bot Agent Backend", () => {
         expect(foundMsg1).toBe(true);
 
         // Check conversation history for second agent
-        const result2 = await actor.get_conversation(agentId2);
+        const result2 = await actor.getConversation(agentId2);
         const messages2 = "ok" in result2 ? result2.ok : [];
         const foundMsg2 = messages2.some(
           (msg: any) => msg.content === message2,

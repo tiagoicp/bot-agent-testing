@@ -9,19 +9,22 @@ module {
         return true;
       };
     };
-    return false;
+    false;
   };
 
   // Initialize first admin (first caller becomes admin)
+  // IMPORTANT: TODO: review security implications before use by third parties
+  // SECURITY WARNING: Ensure there isn't any chance of another party to front run the first caller to addAdmin().
   public func initializeFirstAdmin(caller : Principal, admins : [Principal]) : [Principal] {
     if (admins.size() == 0 and caller != getAnonymousPrincipal()) {
-      return Array.concat(admins, [caller]);
+      Array.concat(admins, [caller]);
+    } else {
+      admins;
     };
-    return admins;
   };
 
   // Validate new admin before adding
-  public func validateNewAdmin(new_admin : Principal, caller : Principal, admins : [Principal]) : {
+  public func validateNewAdmin(newAdmin : Principal, caller : Principal, admins : [Principal]) : {
     #ok : ();
     #err : Text;
   } {
@@ -33,16 +36,16 @@ module {
       return #err("Only admins can add new admins");
     };
 
-    if (isAdmin(new_admin, admins)) {
-      return #err("Principal is already an admin");
+    if (isAdmin(newAdmin, admins)) {
+      #err("Principal is already an admin");
+    } else {
+      #ok(());
     };
-
-    return #ok(());
   };
 
   // Add a new admin to the list
-  public func addAdminToList(new_admin : Principal, admins : [Principal]) : [Principal] {
-    return Array.concat(admins, [new_admin]);
+  public func addAdminToList(newAdmin : Principal, admins : [Principal]) : [Principal] {
+    Array.concat(admins, [newAdmin]);
   };
 
   private func getAnonymousPrincipal() : Principal {

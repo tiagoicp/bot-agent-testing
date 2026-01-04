@@ -40,5 +40,10 @@ jobs:
       - name: Check Format
         run: bun run format:check
 
+      - name: Lint Motoko
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/caffeinelabs/lintoko/releases/download/v0.7.0/lintoko-installer.sh | sh
+          bun run lint
+
       - name: Test
         run: bun run test
