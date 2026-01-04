@@ -14,7 +14,7 @@ module {
     };
 
     public func chat(message : Text) : async Text {
-      return await LLM.prompt(selectedModel, message);
+      await LLM.prompt(selectedModel, message);
     };
   };
 };

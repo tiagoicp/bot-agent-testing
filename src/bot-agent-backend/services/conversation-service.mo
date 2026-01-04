@@ -3,7 +3,6 @@ import List "mo:core/List";
 import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
-import Result "mo:core/Result";
 
 module {
   public type Message = {
@@ -58,14 +57,14 @@ module {
     conversations : Map.Map<ConversationKey, List.List<Message>>,
     principal : Principal,
     agentId : Nat,
-  ) : Result.Result<[Message], Text> {
+  ) : { #ok : [Message]; #err : Text } {
     let key = (principal, agentId);
     switch (Map.get(conversations, conversationKeyCompare, key)) {
       case (null) {
-        return #err("No conversation found with agent " # debug_show (agentId));
+        #err("No conversation found with agent " # debug_show (agentId));
       };
       case (?messages) {
-        return #ok(List.toArray(messages));
+        #ok(List.toArray(messages));
       };
     };
   };

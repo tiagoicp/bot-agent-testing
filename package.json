@@ -3,7 +3,6 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "lint": "./lintoko -r .lintoko src",
-    "lint:fix": "./lintoko -r .lintoko --fix src",
     "test": "tsc && dfx build && bun test"
   },
   "dependencies": {

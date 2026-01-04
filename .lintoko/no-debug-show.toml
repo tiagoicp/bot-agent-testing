@@ -1,8 +1,0 @@
-name = "no-debug-show"
-description = "Avoid leaving debug_show in production code. Use only in tests or local debugging."
-query = """
-(
-  (var_exp (identifier) @name) @error
-  (#eq? @name "debug_show")
-)
-"""
