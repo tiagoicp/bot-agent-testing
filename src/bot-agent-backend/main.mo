@@ -48,8 +48,10 @@ persistent actor {
       // call the tool
       // call chat mo:llm with the conversation history
       // Initialize LLM wrapper with default model
-      let llmWrapper = LLMWrapper.LLMWrapper(null);
-      var response = await llmWrapper.chat(message);
+      // commenting, since there isn't a local / test version of llm canister
+      // let llmWrapper = LLMWrapper.LLMWrapper(null);
+      // var response = await llmWrapper.chat(message);
+      var response = "Hello! This is a placeholder response from the AI agent.";
 
       // evaluate response and decide to terminate loop or continue
       // for now, just terminate
