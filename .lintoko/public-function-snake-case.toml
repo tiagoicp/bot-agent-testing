@@ -1,0 +1,10 @@
+name = "public-function-snake-case"
+description = "Public functions must use snake_case naming convention (e.g., get_agent, create_user)."
+query = """
+(
+  (func_dec
+    name: (identifier) @name
+  ) @error
+  (#match? @name "^[A-Z]")
+)
+"""

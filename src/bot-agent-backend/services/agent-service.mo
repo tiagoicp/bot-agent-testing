@@ -30,10 +30,10 @@ module {
 
     let id = nextAgentId;
     let agent : Agent = {
-      id = id;
-      name = name;
-      provider = provider;
-      model = model;
+      id;
+      name;
+      provider;
+      model;
     };
     Map.add(agents, Nat.compare, id, agent);
     return (#ok(id), nextAgentId + 1);
@@ -56,7 +56,7 @@ module {
       };
       case (?existingAgent) {
         let updatedAgent : Agent = {
-          id = id;
+          id;
           name = switch (new_name) {
             case (null) { existingAgent.name };
             case (?name) { name };
