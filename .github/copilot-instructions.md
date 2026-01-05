@@ -20,6 +20,12 @@ Examples:
 - `bun run format` - Run code formatter
 - `bun run lint` - Run linter
 
+## Architectural Patterns
+
+### Guard Rails vs Service Logic
+
+**Guard rails (authentication, authorization, validation)** must be implemented at the **controller level (main.mo)**, not buried inside service functions.
+
 ## How to Verify Your Work
 
 ### For Motoko Code

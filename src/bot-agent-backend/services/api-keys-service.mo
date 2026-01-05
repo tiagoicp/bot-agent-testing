@@ -59,32 +59,28 @@ module {
       #err : Text;
     },
   ) {
-    if (Principal.isAnonymous(principal)) {
-      (apiKeys, #err("Please login before calling this function"));
-    } else {
-      let providerName = switch (provider) {
-        case (#groq) { "groq" };
-      };
-      let key = (agentId, providerName);
-
-      // Get or create the caller's API key map
-      let callerKeyMap = switch (Map.get(apiKeys, Principal.compare, principal)) {
-        case (null) {
-          Map.empty<(Nat, Text), Text>();
-        };
-        case (?existingMap) {
-          existingMap;
-        };
-      };
-
-      // Add the API key to the caller's map
-      Map.add(callerKeyMap, compareNatTextTuple, key, apiKey);
-
-      // Store the updated map back
-      Map.add(apiKeys, Principal.compare, principal, callerKeyMap);
-
-      (apiKeys, #ok(()));
+    let providerName = switch (provider) {
+      case (#groq) { "groq" };
     };
+    let key = (agentId, providerName);
+
+    // Get or create the caller's API key map
+    let callerKeyMap = switch (Map.get(apiKeys, Principal.compare, principal)) {
+      case (null) {
+        Map.empty<(Nat, Text), Text>();
+      };
+      case (?existingMap) {
+        existingMap;
+      };
+    };
+
+    // Add the API key to the caller's map
+    Map.add(callerKeyMap, compareNatTextTuple, key, apiKey);
+
+    // Store the updated map back
+    Map.add(apiKeys, Principal.compare, principal, callerKeyMap);
+
+    (apiKeys, #ok(()));
   };
 
   // Get caller's own API keys
@@ -95,21 +91,17 @@ module {
     #ok : [(Nat, Text)];
     #err : Text;
   } {
-    if (Principal.isAnonymous(principal)) {
-      #err("Please login before calling this function");
-    } else {
-      switch (Map.get(apiKeys, Principal.compare, principal)) {
-        case (null) {
-          #ok([]);
+    switch (Map.get(apiKeys, Principal.compare, principal)) {
+      case (null) {
+        #ok([]);
+      };
+      case (?callerKeyMap) {
+        let keysIter = Map.keys(callerKeyMap);
+        var keysList = List.empty<(Nat, Text)>();
+        for (key in keysIter) {
+          List.add(keysList, key);
         };
-        case (?callerKeyMap) {
-          let keysIter = Map.keys(callerKeyMap);
-          var keysList = List.empty<(Nat, Text)>();
-          for (key in keysIter) {
-            List.add(keysList, key);
-          };
-          #ok(List.toArray(keysList));
-        };
+        #ok(List.toArray(keysList));
       };
     };
   };

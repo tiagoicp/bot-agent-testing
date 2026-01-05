@@ -1,7 +1,6 @@
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
-import AdminService "./admin-service";
 
 module {
   public type Provider = {
@@ -18,10 +17,10 @@ module {
   };
 
   // Create a new agent
-  public func createAgent(name : Text, provider : Provider, model : Text, caller : Principal, admins : [Principal], agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : ({ #ok : Nat; #err : Text }, Nat) {
-    if (not AdminService.isAdmin(caller, admins)) {
-      (#err("Only admins can add new agents"), nextAgentId);
-    } else if (name == "") { (#err("Agent name cannot be empty"), nextAgentId) } else {
+  public func createAgent(name : Text, provider : Provider, model : Text, agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : ({ #ok : Nat; #err : Text }, Nat) {
+    if (name == "") {
+      (#err("Agent name cannot be empty"), nextAgentId);
+    } else {
       let id = nextAgentId;
       let agent : Agent = {
         id;
@@ -40,56 +39,48 @@ module {
   };
 
   // Update an agent
-  public func updateAgent(id : Nat, newName : ?Text, newProvider : ?Provider, newModel : ?Text, caller : Principal, admins : [Principal], agents : Map.Map<Nat, Agent>) : {
+  public func updateAgent(id : Nat, newName : ?Text, newProvider : ?Provider, newModel : ?Text, agents : Map.Map<Nat, Agent>) : {
     #ok : Bool;
     #err : Text;
   } {
-    if (not AdminService.isAdmin(caller, admins)) {
-      #err("Only admins can update agents");
-    } else {
-      switch (Map.get(agents, Nat.compare, id)) {
-        case (null) {
-          #err("Agent not found");
-        };
-        case (?existingAgent) {
-          let updatedAgent : Agent = {
-            id;
-            name = switch (newName) {
-              case (null) { existingAgent.name };
-              case (?name) { name };
-            };
-            provider = switch (newProvider) {
-              case (null) { existingAgent.provider };
-              case (?provider) { provider };
-            };
-            model = switch (newModel) {
-              case (null) { existingAgent.model };
-              case (?model) { model };
-            };
+    switch (Map.get(agents, Nat.compare, id)) {
+      case (null) {
+        #err("Agent not found");
+      };
+      case (?existingAgent) {
+        let updatedAgent : Agent = {
+          id;
+          name = switch (newName) {
+            case (null) { existingAgent.name };
+            case (?name) { name };
           };
-          Map.add(agents, Nat.compare, id, updatedAgent);
-          #ok(true);
+          provider = switch (newProvider) {
+            case (null) { existingAgent.provider };
+            case (?provider) { provider };
+          };
+          model = switch (newModel) {
+            case (null) { existingAgent.model };
+            case (?model) { model };
+          };
         };
+        Map.add(agents, Nat.compare, id, updatedAgent);
+        #ok(true);
       };
     };
   };
 
   // Delete an agent
-  public func deleteAgent(id : Nat, caller : Principal, admins : [Principal], agents : Map.Map<Nat, Agent>) : {
+  public func deleteAgent(id : Nat, agents : Map.Map<Nat, Agent>) : {
     #ok : Bool;
     #err : Text;
   } {
-    if (not AdminService.isAdmin(caller, admins)) {
-      #err("Only admins can delete agents");
-    } else {
-      switch (Map.get(agents, Nat.compare, id)) {
-        case (null) {
-          #err("Agent not found");
-        };
-        case (?_) {
-          Map.remove(agents, Nat.compare, id);
-          #ok(true);
-        };
+    switch (Map.get(agents, Nat.compare, id)) {
+      case (null) {
+        #err("Agent not found");
+      };
+      case (?_) {
+        Map.remove(agents, Nat.compare, id);
+        #ok(true);
       };
     };
   };

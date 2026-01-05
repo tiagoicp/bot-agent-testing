@@ -83,7 +83,10 @@ persistent actor {
     #ok : Nat;
     #err : Text;
   } {
-    let (result, newId) = AgentService.createAgent(name, provider, model, caller, admins, agents, nextAgentId);
+    if (not AdminService.isAdmin(caller, admins)) {
+      return #err("Only admins can create agents");
+    };
+    let (result, newId) = AgentService.createAgent(name, provider, model, agents, nextAgentId);
     nextAgentId := newId;
     result;
   };
@@ -98,7 +101,10 @@ persistent actor {
     #ok : Bool;
     #err : Text;
   } {
-    AgentService.updateAgent(id, newName, newProvider, newModel, caller, admins, agents);
+    if (not AdminService.isAdmin(caller, admins)) {
+      return #err("Only admins can update agents");
+    };
+    AgentService.updateAgent(id, newName, newProvider, newModel, agents);
   };
 
   // Delete an agent
@@ -106,7 +112,10 @@ persistent actor {
     #ok : Bool;
     #err : Text;
   } {
-    AgentService.deleteAgent(id, caller, admins, agents);
+    if (not AdminService.isAdmin(caller, admins)) {
+      return #err("Only admins can delete agents");
+    };
+    AgentService.deleteAgent(id, agents);
   };
 
   // List all agents
@@ -148,6 +157,9 @@ persistent actor {
     #ok : ();
     #err : Text;
   } {
+    if (Principal.isAnonymous(caller)) {
+      return #err("Please login before calling this function");
+    };
     let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, caller, agentId, provider, apiKey);
     apiKeys := updatedApiKeys;
     result;
@@ -158,6 +170,9 @@ persistent actor {
     #ok : [(Nat, Text)];
     #err : Text;
   } {
+    if (Principal.isAnonymous(caller)) {
+      return #err("Please login before calling this function");
+    };
     ApiKeysService.getMyApiKeys(apiKeys, caller);
   };
 };
