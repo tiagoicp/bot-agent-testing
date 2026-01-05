@@ -4,47 +4,13 @@ import Nat "mo:core/Nat";
 import Time "mo:core/Time";
 import List "mo:core/List";
 import Text "mo:core/Text";
-import Order "mo:core/Order";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
 import ConversationService "./services/conversation-service";
+import ApiKeysService "./services/api-keys-service";
 // import LLMWrapper "./wrappers/llm-wrapper";
 
 persistent actor {
-  public type LLMProvider = {
-    #groq;
-  };
-
-  public type ApiKeyKey = {
-    agentId : Nat;
-    provider : LLMProvider;
-  };
-
-  // Comparator for (Nat, Text) tuples
-  func compareNatTextTuple(a : (Nat, Text), b : (Nat, Text)) : Order.Order {
-    switch (Nat.compare(a.0, b.0)) {
-      case (#equal) { Text.compare(a.1, b.1) };
-      case (other) { other };
-    };
-  };
-
-  // Get API key for a specific caller, agent, and provider
-  private func getApiKeyForCaller(principal : Principal, agentId : Nat, provider : LLMProvider) : ?Text {
-    let providerName = switch (provider) {
-      case (#groq) { "groq" };
-    };
-    let key = (agentId, providerName);
-
-    switch (Map.get(apiKeys, Principal.compare, principal)) {
-      case (null) {
-        null;
-      };
-      case (?callerKeyMap) {
-        Map.get(callerKeyMap, compareNatTextTuple, key);
-      };
-    };
-  };
-
   var agents = Map.empty<Nat, AgentService.Agent>();
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
@@ -89,7 +55,7 @@ persistent actor {
       // var response = await llmWrapper.chat(message);
 
       // get api key
-      let apiKey = getApiKeyForCaller(caller, agentId, #groq);
+      let apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, caller, agentId, #groq);
 
       var response = "Hello! This is a placeholder response from the AI agent.";
 
@@ -178,36 +144,13 @@ persistent actor {
   };
 
   // Store an API key for an agent
-  public shared ({ caller }) func storeApiKey(agentId : Nat, provider : LLMProvider, apiKey : Text) : async {
+  public shared ({ caller }) func storeApiKey(agentId : Nat, provider : ApiKeysService.LLMProvider, apiKey : Text) : async {
     #ok : ();
     #err : Text;
   } {
-    if (Principal.isAnonymous(caller)) {
-      #err("Please login before calling this function");
-    } else {
-      let providerName = switch (provider) {
-        case (#groq) { "groq" };
-      };
-      let key = (agentId, providerName);
-
-      // Get or create the caller's API key map
-      let callerKeyMap = switch (Map.get(apiKeys, Principal.compare, caller)) {
-        case (null) {
-          Map.empty<(Nat, Text), Text>();
-        };
-        case (?existingMap) {
-          existingMap;
-        };
-      };
-
-      // Add the API key to the caller's map
-      Map.add(callerKeyMap, compareNatTextTuple, key, apiKey);
-
-      // Store the updated map back
-      Map.add(apiKeys, Principal.compare, caller, callerKeyMap);
-
-      #ok(());
-    };
+    let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, caller, agentId, provider, apiKey);
+    apiKeys := updatedApiKeys;
+    result;
   };
 
   // Get caller's own API keys
@@ -215,22 +158,6 @@ persistent actor {
     #ok : [(Nat, Text)];
     #err : Text;
   } {
-    if (Principal.isAnonymous(caller)) {
-      #err("Please login before calling this function");
-    } else {
-      switch (Map.get(apiKeys, Principal.compare, caller)) {
-        case (null) {
-          #ok([]);
-        };
-        case (?callerKeyMap) {
-          let keysIter = Map.keys(callerKeyMap);
-          var keysList = List.empty<(Nat, Text)>();
-          for (key in keysIter) {
-            List.add(keysList, key);
-          };
-          #ok(List.toArray(keysList));
-        };
-      };
-    };
+    ApiKeysService.getMyApiKeys(apiKeys, caller);
   };
 };
