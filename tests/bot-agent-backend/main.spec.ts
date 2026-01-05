@@ -165,7 +165,7 @@ describe("Bot Agent Backend", () => {
         );
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
-          "Only admins can add new agents",
+          "Only admins can create agents",
         );
       });
 
@@ -475,6 +475,154 @@ describe("Bot Agent Backend", () => {
           (msg: any) => msg.content === message2,
         );
         expect(foundMsg2).toBe(true);
+      });
+    });
+  });
+
+  // ============ API KEY MANAGEMENT TESTS ============
+
+  describe("API Key Management", () => {
+    let adminIdentity: any;
+    let adminPrincipal: Principal;
+    let userIdentity: any;
+    let userPrincipal: Principal;
+    let agentId: bigint;
+
+    beforeEach(async () => {
+      // Set up an admin
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.addAdmin(adminPrincipal);
+
+      // Create a test agent
+      const createResult = await actor.createAgent(
+        "Test API Key Agent",
+        { openai: null },
+        "gpt-4",
+      );
+      agentId = "ok" in createResult ? createResult.ok : null;
+
+      // Set up a regular user
+      userIdentity = generateRandomIdentity();
+      userPrincipal = userIdentity.getPrincipal();
+      actor.setIdentity(userIdentity);
+    });
+
+    describe("store_api_key", () => {
+      it("should reject anonymous users from storing API keys", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-key-123",
+        );
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should reject storing API key for non-existent agent", async () => {
+        const result = await actor.storeApiKey(
+          999n,
+          { groq: null },
+          "test-key-123",
+        );
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual("Agent not found");
+      });
+    });
+
+    describe("get_my_api_keys", () => {
+      it("should reject anonymous users from retrieving API keys", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.getMyApiKeys();
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should return empty array when user has no API keys", async () => {
+        const result = await actor.getMyApiKeys();
+        expect("ok" in result).toBe(true);
+        const keys = "ok" in result ? result.ok : [];
+        expect(keys).toEqual([]);
+      });
+
+      it("should return only caller's API keys, not other users' keys", async () => {
+        // Store key as first user
+        await actor.storeApiKey(agentId, { groq: null }, "user-one-key");
+
+        // Switch to second user
+        const secondUserIdentity = generateRandomIdentity();
+        actor.setIdentity(secondUserIdentity);
+
+        // Second user should have no keys
+        const resultBefore = await actor.getMyApiKeys();
+        expect("ok" in resultBefore).toBe(true);
+        const keysBefore = "ok" in resultBefore ? resultBefore.ok : [];
+        expect(keysBefore.length).toEqual(0);
+
+        // Store a key as second user
+        await actor.storeApiKey(agentId, { groq: null }, "user-two-key");
+
+        // Now second user should have exactly 1 key
+        const resultAfter = await actor.getMyApiKeys();
+        expect("ok" in resultAfter).toBe(true);
+        const keysAfter = "ok" in resultAfter ? resultAfter.ok : [];
+        expect(keysAfter.length).toEqual(1);
+
+        // Switch back to first user
+        actor.setIdentity(userIdentity);
+        const firstUserResult = await actor.getMyApiKeys();
+        expect("ok" in firstUserResult).toBe(true);
+        const firstUserKeys = "ok" in firstUserResult ? firstUserResult.ok : [];
+        expect(firstUserKeys.length).toEqual(1);
+      });
+
+      it("should maintain API key list after storing multiple keys", async () => {
+        // Create multiple agents
+        actor.setIdentity(adminIdentity);
+        const agent1 = agentId;
+        const createResult2 = await actor.createAgent(
+          "Agent 2",
+          { groq: null },
+          "mixtral",
+        );
+        const agent2 = "ok" in createResult2 ? createResult2.ok : null;
+        const createResult3 = await actor.createAgent(
+          "Agent 3",
+          { groq: null },
+          "llama",
+        );
+        const agent3 = "ok" in createResult3 ? createResult3.ok : null;
+
+        // Switch to user and store keys
+        actor.setIdentity(userIdentity);
+        await actor.storeApiKey(agent1, { groq: null }, "key-1");
+        await actor.storeApiKey(agent2, { groq: null }, "key-2");
+        await actor.storeApiKey(agent3, { groq: null }, "key-3");
+
+        // Retrieve and verify all keys are present
+        const result = await actor.getMyApiKeys();
+        expect("ok" in result).toBe(true);
+        const keys = "ok" in result ? result.ok : [];
+        expect(keys.length).toEqual(3);
+
+        // Verify specific keys
+        expect(keys.some((k: any) => k[0] === agent1 && k[1] === "groq")).toBe(
+          true,
+        );
+        expect(keys.some((k: any) => k[0] === agent2 && k[1] === "groq")).toBe(
+          true,
+        );
+        expect(keys.some((k: any) => k[0] === agent3 && k[1] === "groq")).toBe(
+          true,
+        );
       });
     });
   });

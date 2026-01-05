@@ -159,7 +159,10 @@ persistent actor {
   } {
     if (Principal.isAnonymous(caller)) {
       return #err("Please login before calling this function");
+    } else if (AgentService.getAgent(agentId, agents) == null) {
+      return #err("Agent not found");
     };
+
     let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, caller, agentId, provider, apiKey);
     apiKeys := updatedApiKeys;
     result;
