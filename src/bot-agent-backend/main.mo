@@ -161,6 +161,8 @@ persistent actor {
       return #err("Please login before calling this function");
     } else if (AgentService.getAgent(agentId, agents) == null) {
       return #err("Agent not found");
+    } else if (apiKey == "") {
+      return #err("API key cannot be empty");
     };
 
     let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, caller, agentId, provider, apiKey);
