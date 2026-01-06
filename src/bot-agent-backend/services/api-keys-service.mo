@@ -11,11 +11,6 @@ module {
     #groq;
   };
 
-  public type ApiKeyKey = {
-    agentId : Nat;
-    provider : LLMProvider;
-  };
-
   // Comparator for (Nat, Text) tuples
   public func compareNatTextTuple(a : (Nat, Text), b : (Nat, Text)) : Order.Order {
     switch (Nat.compare(a.0, b.0)) {
