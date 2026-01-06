@@ -55,7 +55,7 @@ persistent actor {
       // var response = await llmWrapper.chat(message);
 
       // get api key
-      let apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, caller, agentId, #groq);
+      let _apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, caller, agentId, #groq);
 
       var response = "Hello! This is a placeholder response from the AI agent.";
 

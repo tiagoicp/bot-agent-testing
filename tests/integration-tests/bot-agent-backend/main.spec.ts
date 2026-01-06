@@ -5,8 +5,8 @@ import { PocketIc, generateRandomIdentity } from "@dfinity/pic";
 import { Principal } from "@dfinity/principal";
 
 // Import generated types for your canister
-import { type _SERVICE } from "../../.dfx/local/canisters/bot-agent-backend/service.did";
-import { idlFactory } from "../../.dfx/local/canisters/bot-agent-backend/service.did.js";
+import { type _SERVICE } from "../../../.dfx/local/canisters/bot-agent-backend/service.did.js";
+import { idlFactory } from "../../../.dfx/local/canisters/bot-agent-backend/service.did.js";
 import { type Actor } from "@dfinity/pic";
 
 // Helper to generate valid principals for testing
