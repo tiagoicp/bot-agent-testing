@@ -3,6 +3,7 @@ import List "mo:core/List";
 import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
+import Result "mo:base/Result";
 
 module {
   public type Message = {
@@ -57,7 +58,7 @@ module {
     conversations : Map.Map<ConversationKey, List.List<Message>>,
     principal : Principal,
     agentId : Nat,
-  ) : { #ok : [Message]; #err : Text } {
+  ) : Result.Result<[Message], Text> {
     let key = (principal, agentId);
     switch (Map.get(conversations, conversationKeyCompare, key)) {
       case (null) {

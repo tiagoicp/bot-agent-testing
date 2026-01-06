@@ -4,6 +4,7 @@ import Text "mo:core/Text";
 import List "mo:core/List";
 import Order "mo:core/Order";
 import Nat "mo:core/Nat";
+import Result "mo:base/Result";
 
 module {
   public type LLMProvider = {
@@ -54,10 +55,7 @@ module {
     apiKey : Text,
   ) : (
     Map.Map<Principal, Map.Map<(Nat, Text), Text>>,
-    {
-      #ok : ();
-      #err : Text;
-    },
+    Result.Result<(), Text>,
   ) {
     let providerName = switch (provider) {
       case (#groq) { "groq" };
@@ -87,10 +85,7 @@ module {
   public func getMyApiKeys(
     apiKeys : Map.Map<Principal, Map.Map<(Nat, Text), Text>>,
     principal : Principal,
-  ) : {
-    #ok : [(Nat, Text)];
-    #err : Text;
-  } {
+  ) : Result.Result<[(Nat, Text)], Text> {
     switch (Map.get(apiKeys, Principal.compare, principal)) {
       case (null) {
         #ok([]);

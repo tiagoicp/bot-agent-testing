@@ -1,5 +1,6 @@
 import Array "mo:core/Array";
 import Principal "mo:core/Principal";
+import Result "mo:base/Result";
 
 module {
   // Check if a principal is an admin
@@ -24,10 +25,7 @@ module {
   };
 
   // Validate new admin before adding
-  public func validateNewAdmin(newAdmin : Principal, caller : Principal, admins : [Principal]) : {
-    #ok : ();
-    #err : Text;
-  } {
+  public func validateNewAdmin(newAdmin : Principal, caller : Principal, admins : [Principal]) : Result.Result<(), Text> {
     if (caller == getAnonymousPrincipal()) {
       return #err("Anonymous users cannot be admins");
     };

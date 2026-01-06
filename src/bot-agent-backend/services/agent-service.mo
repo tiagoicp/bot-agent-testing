@@ -1,6 +1,7 @@
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
+import Result "mo:base/Result";
 
 module {
   public type Provider = {
@@ -17,7 +18,7 @@ module {
   };
 
   // Create a new agent
-  public func createAgent(name : Text, provider : Provider, model : Text, agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : ({ #ok : Nat; #err : Text }, Nat) {
+  public func createAgent(name : Text, provider : Provider, model : Text, agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : (Result.Result<Nat, Text>, Nat) {
     if (name == "") {
       (#err("Agent name cannot be empty"), nextAgentId);
     } else {
@@ -39,10 +40,7 @@ module {
   };
 
   // Update an agent
-  public func updateAgent(id : Nat, newName : ?Text, newProvider : ?Provider, newModel : ?Text, agents : Map.Map<Nat, Agent>) : {
-    #ok : Bool;
-    #err : Text;
-  } {
+  public func updateAgent(id : Nat, newName : ?Text, newProvider : ?Provider, newModel : ?Text, agents : Map.Map<Nat, Agent>) : Result.Result<Bool, Text> {
     switch (Map.get(agents, Nat.compare, id)) {
       case (null) {
         #err("Agent not found");
@@ -70,10 +68,7 @@ module {
   };
 
   // Delete an agent
-  public func deleteAgent(id : Nat, agents : Map.Map<Nat, Agent>) : {
-    #ok : Bool;
-    #err : Text;
-  } {
+  public func deleteAgent(id : Nat, agents : Map.Map<Nat, Agent>) : Result.Result<Bool, Text> {
     switch (Map.get(agents, Nat.compare, id)) {
       case (null) {
         #err("Agent not found");
