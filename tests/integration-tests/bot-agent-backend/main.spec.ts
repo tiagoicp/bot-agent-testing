@@ -564,10 +564,16 @@ describe("Bot Agent Backend", () => {
         expect("err" in result ? result.err : "").toEqual("Agent not found");
       });
 
-      it("should reject storing empty API key", async () => {
+      it("should reject storing empty or whitespace only API key", async () => {
         const result = await actor.storeApiKey(agentId, { groq: null }, "");
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
+          "API key cannot be empty",
+        );
+
+        const result2 = await actor.storeApiKey(agentId, { groq: null }, "   ");
+        expect("err" in result2).toBe(true);
+        expect("err" in result2 ? result2.err : "").toEqual(
           "API key cannot be empty",
         );
       });

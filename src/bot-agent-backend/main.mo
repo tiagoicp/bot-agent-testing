@@ -161,7 +161,7 @@ persistent actor {
       return #err("Please login before calling this function");
     } else if (AgentService.getAgent(agentId, agents) == null) {
       return #err("Agent not found");
-    } else if (apiKey == "") {
+    } else if (Text.trim(apiKey, #char ' ') == "") {
       return #err("API key cannot be empty");
     };
 
