@@ -23,6 +23,7 @@ export const WASM_PATH = resolve(
   import.meta.dir,
   "..",
   "..",
+  "..",
   ".dfx",
   "local",
   "canisters",

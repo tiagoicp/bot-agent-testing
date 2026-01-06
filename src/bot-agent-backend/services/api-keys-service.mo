@@ -1,10 +1,10 @@
 import Principal "mo:core/Principal";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
-import List "mo:core/List";
 import Order "mo:core/Order";
 import Nat "mo:core/Nat";
 import Result "mo:base/Result";
+import Iter "mo:core/Iter";
 
 module {
   public type LLMProvider = {
@@ -91,12 +91,7 @@ module {
         #ok([]);
       };
       case (?callerKeyMap) {
-        let keysIter = Map.keys(callerKeyMap);
-        var keysList = List.empty<(Nat, Text)>();
-        for (key in keysIter) {
-          List.add(keysList, key);
-        };
-        #ok(List.toArray(keysList));
+        #ok(Iter.toArray(Map.keys(callerKeyMap)));
       };
     };
   };
