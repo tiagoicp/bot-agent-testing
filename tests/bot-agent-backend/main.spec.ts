@@ -141,7 +141,7 @@ describe("Bot Agent Backend", () => {
   // ============ AGENT MANAGEMENT TESTS ============
 
   describe("Agent Management", () => {
-    let adminIdentity: any;
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
     let adminPrincipal: Principal;
 
     beforeEach(async () => {
@@ -382,9 +382,9 @@ describe("Bot Agent Backend", () => {
   // ============ CONVERSATION TESTS ============
 
   describe("Conversation Management", () => {
-    let adminIdentity: any;
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
     let adminPrincipal: Principal;
-    let userIdentity: any;
+    let userIdentity: ReturnType<typeof generateRandomIdentity>;
     let agentId: bigint;
 
     beforeEach(async () => {
@@ -445,7 +445,8 @@ describe("Bot Agent Backend", () => {
         const messages = "ok" in result ? result.ok : [];
 
         const userMessage = messages.find(
-          (msg: any) => msg.author && "user" in msg.author,
+          (msg: { author?: Record<string, unknown>; content?: string }) =>
+            msg.author && "user" in msg.author,
         );
         expect(userMessage).toBeDefined();
         expect(userMessage?.content).toEqual(testMessage);
@@ -491,7 +492,7 @@ describe("Bot Agent Backend", () => {
         const result1 = await actor.getConversation(agentId);
         const messages1 = "ok" in result1 ? result1.ok : [];
         const foundMsg1 = messages1.some(
-          (msg: any) => msg.content === message1,
+          (msg: { content?: string }) => msg.content === message1,
         );
         expect(foundMsg1).toBe(true);
 
@@ -499,7 +500,7 @@ describe("Bot Agent Backend", () => {
         const result2 = await actor.getConversation(agentId2);
         const messages2 = "ok" in result2 ? result2.ok : [];
         const foundMsg2 = messages2.some(
-          (msg: any) => msg.content === message2,
+          (msg: { content?: string }) => msg.content === message2,
         );
         expect(foundMsg2).toBe(true);
       });
@@ -509,9 +510,9 @@ describe("Bot Agent Backend", () => {
   // ============ API KEY MANAGEMENT TESTS ============
 
   describe("API Key Management", () => {
-    let adminIdentity: any;
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
     let adminPrincipal: Principal;
-    let userIdentity: any;
+    let userIdentity: ReturnType<typeof generateRandomIdentity>;
     let agentId: bigint;
 
     beforeEach(async () => {
@@ -648,15 +649,21 @@ describe("Bot Agent Backend", () => {
         expect(keys.length).toEqual(3);
 
         // Verify specific keys
-        expect(keys.some((k: any) => k[0] === agent1 && k[1] === "groq")).toBe(
-          true,
-        );
-        expect(keys.some((k: any) => k[0] === agent2 && k[1] === "groq")).toBe(
-          true,
-        );
-        expect(keys.some((k: any) => k[0] === agent3 && k[1] === "groq")).toBe(
-          true,
-        );
+        expect(
+          keys.some(
+            (k: [bigint, string]) => k[0] === agent1 && k[1] === "groq",
+          ),
+        ).toBe(true);
+        expect(
+          keys.some(
+            (k: [bigint, string]) => k[0] === agent2 && k[1] === "groq",
+          ),
+        ).toBe(true);
+        expect(
+          keys.some(
+            (k: [bigint, string]) => k[0] === agent3 && k[1] === "groq",
+          ),
+        ).toBe(true);
       });
     });
   });
