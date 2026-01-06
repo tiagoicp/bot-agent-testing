@@ -7,6 +7,7 @@ import { Principal } from "@dfinity/principal";
 // Import generated types for your canister
 import { type _SERVICE } from "../../.dfx/local/canisters/bot-agent-backend/service.did";
 import { idlFactory } from "../../.dfx/local/canisters/bot-agent-backend/service.did.js";
+import { type Actor } from "@dfinity/pic";
 
 // Helper to generate valid principals for testing
 function generateTestPrincipal(seed: number): Principal {
@@ -35,8 +36,7 @@ describe("Bot Agent Backend", () => {
   // Define variables to hold our PocketIC instance, canister ID,
   // and an actor to interact with our canister.
   let pic: PocketIc;
-  let canisterId: Principal;
-  let actor: any; // It will be defined in beforeEach as a fixture.actor
+  let actor: Actor<_SERVICE>;
 
   // The `beforeEach` hook runs before each test.
   //
@@ -54,7 +54,6 @@ describe("Bot Agent Backend", () => {
 
     // Save the actor and canister ID for use in tests
     actor = fixture.actor;
-    canisterId = fixture.canisterId;
   });
 
   // The `afterEach` hook runs after each test.
@@ -193,14 +192,20 @@ describe("Bot Agent Backend", () => {
           { openai: null },
           "gpt-4",
         );
-        const id1 = "ok" in result1 ? result1.ok : null;
+        if ("err" in result1) {
+          throw new Error(`Failed to create agent 1: ${result1.err}`);
+        }
+        const id1 = result1.ok;
 
         const result2 = await actor.createAgent(
           "Agent 2",
           { llmcanister: null },
           "llama",
         );
-        const id2 = "ok" in result2 ? result2.ok : null;
+        if ("err" in result2) {
+          throw new Error(`Failed to create agent 2: ${result2.err}`);
+        }
+        const id2 = result2.ok;
 
         expect(id1).toEqual(0n);
         expect(id2).toEqual(1n);
@@ -209,7 +214,7 @@ describe("Bot Agent Backend", () => {
 
     describe("get_agent", () => {
       it("should return null for non-existent agent", async () => {
-        const agent = await actor.getAgent(999);
+        const agent = await actor.getAgent(999n);
         // Candid handles an optional custom type as an array with 0 or 1 elements
         // an empty array means null in Motoko
         expect(agent).toEqual([]);
@@ -221,10 +226,15 @@ describe("Bot Agent Backend", () => {
           { openai: null },
           "gpt-4",
         );
-        const agentId = "ok" in createResult ? createResult.ok : null;
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
 
         const agent = await actor.getAgent(agentId);
-        expect(agent.length).toBeGreaterThan(0);
+        if (agent.length === 0) {
+          throw new Error("Agent should exist but was not found");
+        }
         const agentData = agent[0];
         expect(agentData.id).toEqual(agentId);
         expect(agentData.name).toEqual("Test Agent");
@@ -263,7 +273,10 @@ describe("Bot Agent Backend", () => {
           { openai: null },
           "gpt-4",
         );
-        const agentId = "ok" in createResult ? createResult.ok : null;
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
 
         const updateResult = await actor.updateAgent(
           agentId,
@@ -274,7 +287,9 @@ describe("Bot Agent Backend", () => {
         expect("ok" in updateResult).toBe(true);
 
         const agent = await actor.getAgent(agentId);
-        expect(agent.length).toBeGreaterThan(0);
+        if (agent.length === 0) {
+          throw new Error("Agent should exist but was not found");
+        }
         const agentData = agent[0];
         expect(agentData.name).toEqual("Updated Name");
         expect(agentData.model).toEqual("gpt-4");
@@ -286,7 +301,10 @@ describe("Bot Agent Backend", () => {
           { openai: null },
           "gpt-3.5",
         );
-        const agentId = "ok" in createResult ? createResult.ok : null;
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
 
         const updateResult = await actor.updateAgent(
           agentId,
@@ -297,7 +315,9 @@ describe("Bot Agent Backend", () => {
         expect("ok" in updateResult).toBe(true);
 
         const agent = await actor.getAgent(agentId);
-        expect(agent.length).toBeGreaterThan(0);
+        if (agent.length === 0) {
+          throw new Error("Agent should exist but was not found");
+        }
         const agentData = agent[0];
         expect(agentData.name).toEqual("New Agent Name");
         expect(agentData.provider).toEqual({ llmcanister: null });
@@ -311,7 +331,7 @@ describe("Bot Agent Backend", () => {
         const nonAdminIdentity = generateRandomIdentity();
         actor.setIdentity(nonAdminIdentity);
 
-        const deleteResult = await actor.deleteAgent(0);
+        const deleteResult = await actor.deleteAgent(0n);
         expect("err" in deleteResult).toBe(true);
         expect("err" in deleteResult ? deleteResult.err : "").toEqual(
           "Only admins can delete agents",
@@ -319,7 +339,7 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should reject deletion of non-existent agent", async () => {
-        const result = await actor.deleteAgent(999);
+        const result = await actor.deleteAgent(999n);
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual("Agent not found");
       });
@@ -330,7 +350,10 @@ describe("Bot Agent Backend", () => {
           { openai: null },
           "gpt-4",
         );
-        const agentId = "ok" in createResult ? createResult.ok : null;
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
 
         const deleteResult = await actor.deleteAgent(agentId);
         expect("ok" in deleteResult).toBe(true);
@@ -362,7 +385,6 @@ describe("Bot Agent Backend", () => {
     let adminIdentity: any;
     let adminPrincipal: Principal;
     let userIdentity: any;
-    let userPrincipal: Principal;
     let agentId: bigint;
 
     beforeEach(async () => {
@@ -378,11 +400,13 @@ describe("Bot Agent Backend", () => {
         { openai: null },
         "gpt-4",
       );
-      agentId = "ok" in createResult ? createResult.ok : null;
+      if ("err" in createResult) {
+        throw new Error(`Failed to create agent: ${createResult.err}`);
+      }
+      agentId = createResult.ok;
 
       // Set up a regular user
       userIdentity = generateRandomIdentity();
-      userPrincipal = userIdentity.getPrincipal();
       actor.setIdentity(userIdentity);
     });
 
@@ -450,7 +474,10 @@ describe("Bot Agent Backend", () => {
           { groq: null },
           "mixtral",
         );
-        const agentId2 = "ok" in createResult2 ? createResult2.ok : null;
+        if ("err" in createResult2) {
+          throw new Error(`Failed to create agent: ${createResult2.err}`);
+        }
+        const agentId2 = createResult2.ok;
 
         // Switch back to user and send messages to different agents
         actor.setIdentity(userIdentity);
@@ -485,7 +512,6 @@ describe("Bot Agent Backend", () => {
     let adminIdentity: any;
     let adminPrincipal: Principal;
     let userIdentity: any;
-    let userPrincipal: Principal;
     let agentId: bigint;
 
     beforeEach(async () => {
@@ -501,11 +527,13 @@ describe("Bot Agent Backend", () => {
         { openai: null },
         "gpt-4",
       );
-      agentId = "ok" in createResult ? createResult.ok : null;
+      if ("err" in createResult) {
+        throw new Error(`Failed to create agent: ${createResult.err}`);
+      }
+      agentId = createResult.ok;
 
       // Set up a regular user
       userIdentity = generateRandomIdentity();
-      userPrincipal = userIdentity.getPrincipal();
       actor.setIdentity(userIdentity);
     });
 
@@ -593,13 +621,19 @@ describe("Bot Agent Backend", () => {
           { groq: null },
           "mixtral",
         );
-        const agent2 = "ok" in createResult2 ? createResult2.ok : null;
+        if ("err" in createResult2) {
+          throw new Error(`Failed to create agent 2: ${createResult2.err}`);
+        }
+        const agent2 = createResult2.ok;
         const createResult3 = await actor.createAgent(
           "Agent 3",
           { groq: null },
           "llama",
         );
-        const agent3 = "ok" in createResult3 ? createResult3.ok : null;
+        if ("err" in createResult3) {
+          throw new Error(`Failed to create agent 3: ${createResult3.err}`);
+        }
+        const agent3 = createResult3.ok;
 
         // Switch to user and store keys
         actor.setIdentity(userIdentity);
