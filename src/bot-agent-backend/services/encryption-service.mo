@@ -1,13 +1,12 @@
-import Blob "mo:base/Blob";
-import Array "mo:base/Array";
-import Nat8 "mo:base/Nat8";
-import Nat32 "mo:base/Nat32";
-import Nat64 "mo:base/Nat64";
-import Nat "mo:base/Nat";
-import Int "mo:base/Int";
-import Buffer "mo:base/Buffer";
-import Iter "mo:base/Iter";
-import Text "mo:base/Text";
+import Blob "mo:core/Blob";
+import Array "mo:core/Array";
+import Nat8 "mo:core/Nat8";
+import Nat32 "mo:core/Nat32";
+import Nat64 "mo:core/Nat64";
+import Nat "mo:core/Nat";
+import Int "mo:core/Int";
+import List "mo:core/List";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Sha256 "mo:sha2/Sha256";
@@ -70,7 +69,7 @@ module {
     };
 
     var result : Nat8 = 0;
-    for (i in Iter.range(0, a.size() - 1)) {
+    for (i in Nat.range(0, a.size())) {
       result := result | (a[i] ^ b[i]);
     };
 
@@ -83,15 +82,14 @@ module {
     let counterBytes = nat64ToBytes(counter);
 
     // Concatenate: key ++ nonce ++ counter
-    let inputSize = key.size() + nonce.size() + counterBytes.size();
-    let input = Buffer.Buffer<Nat8>(inputSize);
+    let input = List.empty<Nat8>();
 
-    for (byte in key.vals()) { input.add(byte) };
-    for (byte in nonce.vals()) { input.add(byte) };
-    for (byte in counterBytes.vals()) { input.add(byte) };
+    for (byte in key.vals()) { List.add(input, byte) };
+    for (byte in nonce.vals()) { List.add(input, byte) };
+    for (byte in counterBytes.vals()) { List.add(input, byte) };
 
     // Hash and return as [Nat8]
-    let hashBlob = Sha256.fromArray(#sha256, Buffer.toArray(input));
+    let hashBlob = Sha256.fromArray(#sha256, List.toArray(input));
     Blob.toArray(hashBlob);
   };
 
@@ -101,20 +99,20 @@ module {
       return [];
     };
 
-    let keystream = Buffer.Buffer<Nat8>(length);
+    let keystream = List.empty<Nat8>();
     var counter : Nat64 = 0;
 
-    while (keystream.size() < length) {
+    while (List.size(keystream) < length) {
       let block = generateKeystreamBlock(key, nonce, counter);
       for (byte in block.vals()) {
-        if (keystream.size() < length) {
-          keystream.add(byte);
+        if (List.size(keystream) < length) {
+          List.add(keystream, byte);
         };
       };
       counter += 1;
     };
 
-    Buffer.toArray(keystream);
+    List.toArray(keystream);
   };
 
   /// Encrypt plaintext
@@ -138,13 +136,12 @@ module {
     };
 
     // Concatenate: nonce ++ ciphertext
-    let outputSize = NONCE_SIZE + ciphertext.size();
-    let output = Buffer.Buffer<Nat8>(outputSize);
+    let output = List.empty<Nat8>();
 
-    for (byte in nonce.vals()) { output.add(byte) };
-    for (byte in ciphertext.vals()) { output.add(byte) };
+    for (byte in nonce.vals()) { List.add(output, byte) };
+    for (byte in ciphertext.vals()) { List.add(output, byte) };
 
-    Buffer.toArray(output);
+    List.toArray(output);
   };
 
   /// Decrypt ciphertext
