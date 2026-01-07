@@ -3,7 +3,7 @@ import List "mo:core/List";
 import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 
 module {
   public type Message = {

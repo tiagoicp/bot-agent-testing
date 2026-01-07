@@ -73,7 +73,6 @@ suite(
         let (updatedKeys, result) = ApiKeysService.storeApiKey(
           apiKeys,
           testKey,
-          testNonce,
           principal,
           agentId,
           provider,
@@ -109,7 +108,6 @@ suite(
         let (keysAfterFirst, result1) = ApiKeysService.storeApiKey(
           apiKeys,
           testKey,
-          testNonce,
           principal,
           agentId,
           provider,
@@ -133,7 +131,6 @@ suite(
         let (keysAfterSecond, result2) = ApiKeysService.storeApiKey(
           apiKeys,
           testKey,
-          testNonce2,
           principal,
           agentId,
           provider,

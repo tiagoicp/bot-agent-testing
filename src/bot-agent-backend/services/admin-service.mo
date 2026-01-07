@@ -1,6 +1,6 @@
 import Array "mo:core/Array";
 import Principal "mo:core/Principal";
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 
 module {
   // Check if a principal is an admin

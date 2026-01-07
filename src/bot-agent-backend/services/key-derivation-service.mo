@@ -5,9 +5,9 @@
 /// 1. Calling sign_with_schnorr with Principal as derivation path + message
 /// 2. Hashing the signature with SHA256 to get a 32-byte key
 
-import Principal "mo:base/Principal";
-import Blob "mo:base/Blob";
-import Array "mo:base/Array";
+import Principal "mo:core/Principal";
+import Blob "mo:core/Blob";
+import Array "mo:core/Array";
 import Sha256 "mo:sha2/Sha256";
 
 module {
@@ -143,7 +143,7 @@ module {
 
     // Add to cache
     let newEntry = (principal, key);
-    let updatedCache = Array.append<(Principal, [Nat8])>(cache, [newEntry]);
+    let updatedCache = Array.concat<(Principal, [Nat8])>(cache, [newEntry]);
 
     (updatedCache, key);
   };

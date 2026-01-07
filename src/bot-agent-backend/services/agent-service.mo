@@ -1,7 +1,7 @@
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 
 module {
   public type Provider = {

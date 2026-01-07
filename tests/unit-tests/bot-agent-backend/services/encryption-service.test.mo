@@ -1,8 +1,10 @@
 import { test; suite } "mo:test";
 import EncryptionService "../../../../src/bot-agent-backend/services/encryption-service";
-import Array "mo:base/Array";
-import Nat8 "mo:base/Nat8";
-import Nat "mo:base/Nat";
+import Array "mo:core/Array";
+import Nat8 "mo:core/Nat8";
+import Nat "mo:core/Nat";
+import Principal "mo:core/Principal";
+import Blob "mo:core/Blob";
 
 // Test key (32 bytes) - simulates a SHA256-hashed Schnorr signature
 let testKey : [Nat8] = [
@@ -40,7 +42,14 @@ let testKey : [Nat8] = [
   0x1F,
 ];
 
-// Test nonce (8 bytes)
+// Test caller principal
+let testCaller = Principal.fromActor(actor "aaaaa-aa");
+
+// Different caller for comparison tests - create a different principal from bytes
+let differentCallerBytes : [Nat8] = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+let differentCaller = Principal.fromBlob(Blob.fromArray(differentCallerBytes));
+
+// Test nonce (8 bytes) - for testing lower-level functions
 let testNonce : [Nat8] = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22];
 
 // Different nonce for comparison tests
@@ -261,7 +270,7 @@ suite(
           func() {
             let plaintext : [Nat8] = [0x48, 0x65, 0x6C, 0x6C, 0x6F]; // "Hello"
 
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
+            let encrypted = EncryptionService.encrypt(testKey, plaintext, testCaller);
             let decrypted = EncryptionService.decrypt(testKey, encrypted);
 
             switch (decrypted) {
@@ -278,7 +287,7 @@ suite(
           func() {
             let plaintext : [Nat8] = [0x01, 0x02, 0x03, 0x04, 0x05];
 
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
+            let encrypted = EncryptionService.encrypt(testKey, plaintext, testCaller);
 
             // Expected size: 8 (nonce) + 5 (ciphertext) = 13
             assert encrypted.size() == 13;
@@ -290,8 +299,8 @@ suite(
           func() {
             let plaintext : [Nat8] = [0x48, 0x65, 0x6C, 0x6C, 0x6F];
 
-            let encrypted1 = EncryptionService.encrypt(testKey, plaintext, testNonce);
-            let encrypted2 = EncryptionService.encrypt(testKey, plaintext, differentNonce);
+            let encrypted1 = EncryptionService.encrypt(testKey, plaintext, testCaller);
+            let encrypted2 = EncryptionService.encrypt(testKey, plaintext, differentCaller);
 
             assert not EncryptionService.arrayEqual(encrypted1, encrypted2);
           },
@@ -302,7 +311,7 @@ suite(
           func() {
             let plaintext : [Nat8] = [];
 
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
+            let encrypted = EncryptionService.encrypt(testKey, plaintext, testCaller);
             let decrypted = EncryptionService.decrypt(testKey, encrypted);
 
             switch (decrypted) {
@@ -320,7 +329,7 @@ suite(
             // Create 100-byte plaintext
             let plaintext = Array.tabulate<Nat8>(100, func(i : Nat) : Nat8 { Nat8.fromNat(i % 256) });
 
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
+            let encrypted = EncryptionService.encrypt(testKey, plaintext, testCaller);
             let decrypted = EncryptionService.decrypt(testKey, encrypted);
 
             switch (decrypted) {
@@ -347,7 +356,7 @@ suite(
             let plaintext : [Nat8] = [0x48, 0x65, 0x6C, 0x6C, 0x6F];
             let wrongKey : [Nat8] = Array.tabulate<Nat8>(32, func(i : Nat) : Nat8 { 0xFF });
 
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
+            let encrypted = EncryptionService.encrypt(testKey, plaintext, testCaller);
             let decrypted = EncryptionService.decrypt(wrongKey, encrypted);
 
             switch (decrypted) {

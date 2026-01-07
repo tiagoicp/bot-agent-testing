@@ -3,9 +3,9 @@ import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Order "mo:core/Order";
 import Nat "mo:core/Nat";
-import Result "mo:base/Result";
+import Result "mo:core/Result";
 import Iter "mo:core/Iter";
-import Blob "mo:base/Blob";
+import Blob "mo:core/Blob";
 import EncryptionService "./encryption-service";
 
 module {
