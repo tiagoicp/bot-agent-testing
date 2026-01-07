@@ -16,7 +16,7 @@ Examples:
 
 - `bun install` - Install dependencies
 - `bun run <script>` - Run scripts from package.json
-- `bun test` - Run tests
+- `bun run test` - Run tests
 - `bun run format` - Run code formatter
 - `bun run lint` - Run linter
 

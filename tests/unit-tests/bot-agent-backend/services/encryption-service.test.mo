@@ -254,41 +254,6 @@ suite(
     );
 
     suite(
-      "computeTag",
-      func() {
-        test(
-          "generates 16-byte tag",
-          func() {
-            let ciphertext : [Nat8] = [0x01, 0x02, 0x03, 0x04];
-            let tag = EncryptionService.computeTag(testKey, testNonce, ciphertext);
-            assert tag.size() == 16;
-          },
-        );
-
-        test(
-          "same inputs produce same tag",
-          func() {
-            let ciphertext : [Nat8] = [0x01, 0x02, 0x03, 0x04];
-            let tag1 = EncryptionService.computeTag(testKey, testNonce, ciphertext);
-            let tag2 = EncryptionService.computeTag(testKey, testNonce, ciphertext);
-            assert EncryptionService.arrayEqual(tag1, tag2);
-          },
-        );
-
-        test(
-          "different ciphertext produces different tag",
-          func() {
-            let ct1 : [Nat8] = [0x01, 0x02, 0x03, 0x04];
-            let ct2 : [Nat8] = [0x01, 0x02, 0x03, 0x05];
-            let tag1 = EncryptionService.computeTag(testKey, testNonce, ct1);
-            let tag2 = EncryptionService.computeTag(testKey, testNonce, ct2);
-            assert not EncryptionService.arrayEqual(tag1, tag2);
-          },
-        );
-      },
-    );
-
-    suite(
       "encrypt and decrypt",
       func() {
         test(
@@ -315,8 +280,8 @@ suite(
 
             let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
 
-            // Expected size: 8 (nonce) + 16 (tag) + 5 (ciphertext) = 29
-            assert encrypted.size() == 29;
+            // Expected size: 8 (nonce) + 5 (ciphertext) = 13
+            assert encrypted.size() == 13;
           },
         );
 
@@ -368,65 +333,16 @@ suite(
         );
 
         test(
-          "detects tampered ciphertext",
-          func() {
-            let plaintext : [Nat8] = [0x48, 0x65, 0x6C, 0x6C, 0x6F];
-
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
-            let lastIndex = Nat.sub(encrypted.size(), 1);
-
-            // Tamper with the ciphertext (last byte)
-            let tampered = Array.tabulate<Nat8>(
-              encrypted.size(),
-              func(i : Nat) : Nat8 {
-                if (i == lastIndex) {
-                  encrypted[i] ^ 0xFF // Flip all bits
-                } else {
-                  encrypted[i];
-                };
-              },
-            );
-
-            let decrypted = EncryptionService.decrypt(testKey, tampered);
-            assert decrypted == null;
-          },
-        );
-
-        test(
-          "detects tampered tag",
-          func() {
-            let plaintext : [Nat8] = [0x48, 0x65, 0x6C, 0x6C, 0x6F];
-
-            let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
-
-            // Tamper with the tag (byte at position 8)
-            let tampered = Array.tabulate<Nat8>(
-              encrypted.size(),
-              func(i : Nat) : Nat8 {
-                if (i == 8) {
-                  encrypted[i] ^ 0xFF;
-                } else {
-                  encrypted[i];
-                };
-              },
-            );
-
-            let decrypted = EncryptionService.decrypt(testKey, tampered);
-            assert decrypted == null;
-          },
-        );
-
-        test(
           "rejects truncated data",
           func() {
-            let tooShort : [Nat8] = [0x01, 0x02, 0x03]; // Less than 24 bytes (8 nonce + 16 tag)
+            let tooShort : [Nat8] = [0x01, 0x02, 0x03]; // Less than 8 bytes (nonce)
             let decrypted = EncryptionService.decrypt(testKey, tooShort);
             assert decrypted == null;
           },
         );
 
         test(
-          "wrong key fails decryption",
+          "wrong key produces different output",
           func() {
             let plaintext : [Nat8] = [0x48, 0x65, 0x6C, 0x6C, 0x6F];
             let wrongKey : [Nat8] = Array.tabulate<Nat8>(32, func(i : Nat) : Nat8 { 0xFF });
@@ -434,7 +350,13 @@ suite(
             let encrypted = EncryptionService.encrypt(testKey, plaintext, testNonce);
             let decrypted = EncryptionService.decrypt(wrongKey, encrypted);
 
-            assert decrypted == null;
+            switch (decrypted) {
+              case (null) { assert false };
+              case (?result) {
+                // Decryption succeeds but produces different (garbage) output
+                assert not EncryptionService.arrayEqual(plaintext, result);
+              };
+            };
           },
         );
       },

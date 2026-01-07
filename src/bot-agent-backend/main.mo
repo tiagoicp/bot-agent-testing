@@ -1,12 +1,8 @@
 import Principal "mo:core/Principal";
 import Map "mo:core/Map";
-import Nat "mo:core/Nat";
-import Nat8 "mo:base/Nat8";
-import Int "mo:base/Int";
 import Time "mo:core/Time";
 import List "mo:core/List";
 import Text "mo:core/Text";
-import Array "mo:base/Array";
 import Timer "mo:base/Timer";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
@@ -22,24 +18,6 @@ persistent actor {
   var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
   var apiKeys : ApiKeysService.ApiKeysMap = Map.empty<Principal, Map.Map<(Nat, Text), ApiKeysService.EncryptedApiKey>>(); // Encrypted API keys
   var keyCache : KeyDerivationService.KeyCache = []; // Cache of derived encryption keys
-
-  // Nonce counter for unique encryption nonces
-  var nonceCounter : Nat = 0;
-
-  // Helper to generate unique 8-byte nonce from counter + time
-  private func generateNonce() : [Nat8] {
-    nonceCounter += 1;
-    let time = Int.abs(Time.now());
-    let combined = nonceCounter + time;
-    // Convert to 8 bytes (big-endian)
-    Array.tabulate<Nat8>(
-      8,
-      func(i : Nat) : Nat8 {
-        let shift = Nat.sub(7, i) * 8;
-        Nat8.fromNat((combined / Nat.pow(256, shift)) % 256);
-      },
-    );
-  };
 
   // Schnorr key name - use dfx_test_key for local, test_key_1 for IC
   transient let schnorrKeyName : Text = KeyDerivationService.KEY_NAME_LOCAL;
@@ -217,10 +195,7 @@ persistent actor {
     let (updatedCache, encryptionKey) = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
     keyCache := updatedCache;
 
-    // Generate unique nonce for this encryption
-    let nonce = generateNonce();
-
-    let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, encryptionKey, nonce, caller, agentId, provider, apiKey);
+    let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, encryptionKey, caller, agentId, provider, apiKey);
     apiKeys := updatedApiKeys;
     result;
   };

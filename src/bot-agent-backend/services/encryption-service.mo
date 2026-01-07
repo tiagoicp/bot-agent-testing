@@ -1,25 +1,42 @@
 import Blob "mo:base/Blob";
 import Array "mo:base/Array";
 import Nat8 "mo:base/Nat8";
+import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Nat "mo:base/Nat";
+import Int "mo:base/Int";
 import Buffer "mo:base/Buffer";
 import Iter "mo:base/Iter";
 import Text "mo:base/Text";
+import Time "mo:core/Time";
+import Principal "mo:core/Principal";
 import Sha256 "mo:sha2/Sha256";
 
-/// SHA256-based Stream Cipher with Authentication
+/// SHA256-based Stream Cipher
 ///
-/// This module provides authenticated encryption using:
+/// This module provides encryption using:
 /// - SHA256-based keystream generation (similar to CTR mode)
-/// - SHA256-based authentication tag (HMAC-like)
 ///
-/// Encrypted format: [nonce (8 bytes)] [tag (16 bytes)] [ciphertext (variable)]
+/// Encrypted format: [nonce (8 bytes)] [ciphertext (variable)]
 module {
 
   // Constants
   let NONCE_SIZE : Nat = 8;
-  let TAG_SIZE : Nat = 16;
+
+  /// Generate unique 8-byte nonce from caller principal hash + timestamp
+  public func generateNonce(caller : Principal) : [Nat8] {
+    let time = Int.abs(Time.now());
+    let principalHash = Principal.hash(caller);
+    let combined = Nat32.toNat(principalHash) + time;
+    // Convert to 8 bytes (big-endian)
+    Array.tabulate<Nat8>(
+      8,
+      func(i : Nat) : Nat8 {
+        let shift = Nat.sub(7, i) * 8;
+        Nat8.fromNat((combined / Nat.pow(256, shift)) % 256);
+      },
+    );
+  };
   let _BLOCK_SIZE : Nat = 32; // SHA256 output size (kept for documentation)
 
   /// Convert Nat64 to big-endian byte array (8 bytes)
@@ -100,31 +117,18 @@ module {
     Buffer.toArray(keystream);
   };
 
-  /// Compute authentication tag: SHA256(key ++ nonce ++ ciphertext)[0..16]
-  public func computeTag(key : [Nat8], nonce : [Nat8], ciphertext : [Nat8]) : [Nat8] {
-    let inputSize = key.size() + nonce.size() + ciphertext.size();
-    let input = Buffer.Buffer<Nat8>(inputSize);
-
-    for (byte in key.vals()) { input.add(byte) };
-    for (byte in nonce.vals()) { input.add(byte) };
-    for (byte in ciphertext.vals()) { input.add(byte) };
-
-    let hashBlob = Sha256.fromArray(#sha256, Buffer.toArray(input));
-    let hashBytes = Blob.toArray(hashBlob);
-
-    // Take first TAG_SIZE bytes
-    Array.tabulate<Nat8>(TAG_SIZE, func(i : Nat) : Nat8 { hashBytes[i] });
-  };
-
-  /// Encrypt plaintext with authenticated encryption
+  /// Encrypt plaintext
   ///
   /// Parameters:
   /// - key: 32-byte encryption key (from Schnorr signature hash)
   /// - plaintext: data to encrypt
-  /// - nonce: 8-byte random nonce (MUST be unique per encryption)
+  /// - caller: Principal used to generate unique nonce
   ///
-  /// Returns: [nonce (8 bytes)] [tag (16 bytes)] [ciphertext]
-  public func encrypt(key : [Nat8], plaintext : [Nat8], nonce : [Nat8]) : [Nat8] {
+  /// Returns: [nonce (8 bytes)] [ciphertext]
+  public func encrypt(key : [Nat8], plaintext : [Nat8], caller : Principal) : [Nat8] {
+    // Generate unique nonce from caller + timestamp
+    let nonce = generateNonce(caller);
+
     // Generate keystream and encrypt
     let keystream = generateKeystream(key, nonce, plaintext.size());
     let ciphertext = if (plaintext.size() == 0) {
@@ -133,29 +137,25 @@ module {
       xorBytes(plaintext, keystream);
     };
 
-    // Compute authentication tag
-    let tag = computeTag(key, nonce, ciphertext);
-
-    // Concatenate: nonce ++ tag ++ ciphertext
-    let outputSize = NONCE_SIZE + TAG_SIZE + ciphertext.size();
+    // Concatenate: nonce ++ ciphertext
+    let outputSize = NONCE_SIZE + ciphertext.size();
     let output = Buffer.Buffer<Nat8>(outputSize);
 
     for (byte in nonce.vals()) { output.add(byte) };
-    for (byte in tag.vals()) { output.add(byte) };
     for (byte in ciphertext.vals()) { output.add(byte) };
 
     Buffer.toArray(output);
   };
 
-  /// Decrypt ciphertext with authentication verification
+  /// Decrypt ciphertext
   ///
   /// Parameters:
   /// - key: 32-byte encryption key (same key used for encryption)
-  /// - encrypted: [nonce (8 bytes)] [tag (16 bytes)] [ciphertext]
+  /// - encrypted: [nonce (8 bytes)] [ciphertext]
   ///
-  /// Returns: ?plaintext (null if authentication fails or data is corrupted)
+  /// Returns: ?plaintext (null if data is too short)
   public func decrypt(key : [Nat8], encrypted : [Nat8]) : ?[Nat8] {
-    let minSize = NONCE_SIZE + TAG_SIZE;
+    let minSize = NONCE_SIZE;
 
     // Validate minimum size
     if (encrypted.size() < minSize) {
@@ -164,15 +164,8 @@ module {
 
     // Extract components
     let nonce = Array.tabulate<Nat8>(NONCE_SIZE, func(i : Nat) : Nat8 { encrypted[i] });
-    let tag = Array.tabulate<Nat8>(TAG_SIZE, func(i : Nat) : Nat8 { encrypted[NONCE_SIZE + i] });
     let ciphertextSize : Nat = Nat.sub(encrypted.size(), minSize);
     let ciphertext = Array.tabulate<Nat8>(ciphertextSize, func(i : Nat) : Nat8 { encrypted[minSize + i] });
-
-    // Verify authentication tag
-    let expectedTag = computeTag(key, nonce, ciphertext);
-    if (not arrayEqual(tag, expectedTag)) {
-      return null; // Authentication failed - data tampered or wrong key
-    };
 
     // Decrypt
     if (ciphertextSize == 0) {

@@ -14,7 +14,7 @@ module {
   };
 
   /// Type alias for encrypted API key storage
-  /// The Blob contains: [nonce (8 bytes)] [tag (16 bytes)] [ciphertext]
+  /// The Blob contains: [nonce (8 bytes)] [ciphertext]
   public type EncryptedApiKey = Blob;
 
   /// Type alias for the API keys map
@@ -75,7 +75,6 @@ module {
   ///
   /// @param apiKeys - The encrypted API keys map
   /// @param encryptionKey - 32-byte encryption key for this Principal
-  /// @param nonce - 8-byte random nonce (MUST be unique per encryption)
   /// @param principal - The Principal storing the key
   /// @param agentId - The agent ID
   /// @param provider - The LLM provider
@@ -84,7 +83,6 @@ module {
   public func storeApiKey(
     apiKeys : ApiKeysMap,
     encryptionKey : [Nat8],
-    nonce : [Nat8],
     principal : Principal,
     agentId : Nat,
     provider : LLMProvider,
@@ -95,9 +93,9 @@ module {
     };
     let key = (agentId, providerName);
 
-    // Convert API key to bytes and encrypt
+    // Convert API key to bytes and encrypt (nonce generated internally)
     let plaintextBytes = EncryptionService.textToBytes(apiKey);
-    let encryptedBytes = EncryptionService.encrypt(encryptionKey, plaintextBytes, nonce);
+    let encryptedBytes = EncryptionService.encrypt(encryptionKey, plaintextBytes, principal);
     let encryptedBlob = Blob.fromArray(encryptedBytes);
 
     // Get or create the caller's API key map
