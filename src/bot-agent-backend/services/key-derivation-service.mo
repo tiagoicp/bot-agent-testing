@@ -7,7 +7,7 @@
 
 import Principal "mo:core/Principal";
 import Blob "mo:core/Blob";
-import Array "mo:core/Array";
+import Map "mo:core/Map";
 import Sha256 "mo:sha2/Sha256";
 
 module {
@@ -79,7 +79,7 @@ module {
 
   /// Cache of derived encryption keys per Principal
   /// This avoids repeated expensive Schnorr calls
-  public type KeyCache = [(Principal, [Nat8])];
+  public type KeyCache = Map.Map<Principal, [Nat8]>;
 
   // ============================================
   // Key Derivation Functions
@@ -120,53 +120,48 @@ module {
   };
 
   /// Look up a cached key or derive a new one
-  /// Returns updated cache and the encryption key
+  /// Mutates the cache if key needs to be derived
   ///
-  /// @param cache - Current key cache
+  /// @param cache - Current key cache (will be mutated)
   /// @param keyName - The Schnorr key name
   /// @param principal - The Principal to get/derive key for
-  /// @returns Tuple of (updated cache, encryption key)
+  /// @returns The encryption key
   public func getOrDeriveKey(
     cache : KeyCache,
     keyName : Text,
     principal : Principal,
-  ) : async (KeyCache, [Nat8]) {
+  ) : async [Nat8] {
     // Check if key exists in cache
-    for ((p, key) in cache.vals()) {
-      if (Principal.equal(p, principal)) {
-        return (cache, key);
+    switch (Map.get(cache, Principal.compare, principal)) {
+      case (?key) {
+        key;
+      };
+      case null {
+        // Key not in cache, derive it
+        let key = await deriveKeyFromSchnorr(keyName, principal);
+
+        // Add to cache
+        Map.add(cache, Principal.compare, principal, key);
+
+        key;
       };
     };
-
-    // Key not in cache, derive it
-    let key = await deriveKeyFromSchnorr(keyName, principal);
-
-    // Add to cache
-    let newEntry = (principal, key);
-    let updatedCache = Array.concat<(Principal, [Nat8])>(cache, [newEntry]);
-
-    (updatedCache, key);
   };
 
   /// Clear all entries from the cache
   /// Should be called monthly via Timer
   public func clearCache() : KeyCache {
-    [];
+    Map.empty<Principal, [Nat8]>();
   };
 
   /// Remove a specific Principal from the cache
   /// Useful when a user's API keys are deleted
-  public func removeFromCache(cache : KeyCache, principal : Principal) : KeyCache {
-    Array.filter<(Principal, [Nat8])>(
-      cache,
-      func((p, _) : (Principal, [Nat8])) : Bool {
-        not Principal.equal(p, principal);
-      },
-    );
+  public func removeFromCache(cache : KeyCache, principal : Principal) {
+    Map.remove(cache, Principal.compare, principal);
   };
 
   /// Get cache size (for monitoring)
   public func getCacheSize(cache : KeyCache) : Nat {
-    cache.size();
+    Map.size(cache);
   };
 };

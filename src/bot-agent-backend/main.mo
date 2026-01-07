@@ -17,7 +17,7 @@ persistent actor {
   var admins : [Principal] = [];
   var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
   var apiKeys : ApiKeysService.ApiKeysMap = Map.empty<Principal, Map.Map<(Nat, Text), ApiKeysService.EncryptedApiKey>>(); // Encrypted API keys
-  var keyCache : KeyDerivationService.KeyCache = []; // Cache of derived encryption keys
+  var keyCache : KeyDerivationService.KeyCache = KeyDerivationService.clearCache(); // Cache of derived encryption keys
 
   // Schnorr key name - use dfx_test_key for local, test_key_1 for IC
   transient let schnorrKeyName : Text = KeyDerivationService.KEY_NAME_LOCAL;
@@ -79,8 +79,7 @@ persistent actor {
       // var response = await llmWrapper.chat(message);
 
       // get api key (requires deriving encryption key first)
-      let (updatedCache, encryptionKey) = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
-      keyCache := updatedCache;
+      let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
       let _apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, encryptionKey, caller, agentId, #groq);
 
       var response = "Hello! This is a placeholder response from the AI agent.";
@@ -192,8 +191,7 @@ persistent actor {
     };
 
     // Derive encryption key for this caller
-    let (updatedCache, encryptionKey) = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
-    keyCache := updatedCache;
+    let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
 
     let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, encryptionKey, caller, agentId, provider, apiKey);
     apiKeys := updatedApiKeys;
