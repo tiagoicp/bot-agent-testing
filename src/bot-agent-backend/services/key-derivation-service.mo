@@ -9,6 +9,8 @@ import Principal "mo:core/Principal";
 import Blob "mo:core/Blob";
 import Map "mo:core/Map";
 import Sha256 "mo:sha2/Sha256";
+import Types "../types";
+import Constants "../constants";
 
 module {
   // ============================================
@@ -69,6 +71,16 @@ module {
   /// Key name for production
   public let KEY_NAME_PROD : Text = "key_1";
 
+  /// Get the Schnorr key name based on environment
+  public func getSchnorrKeyName(env : Types.Environment) : Text {
+    switch (env) {
+      case (#local) { KEY_NAME_LOCAL };
+      case (#test) { KEY_NAME_TEST };
+      case (#staging) { KEY_NAME_PROD }; // Use prod key for staging
+      case (#production) { KEY_NAME_PROD };
+    };
+  };
+
   /// Static message used for key derivation
   /// The Principal in derivation_path makes each key unique
   private let KEY_DERIVATION_MESSAGE : Blob = "api_key_encryption_key_derivation_v1";
@@ -123,20 +135,20 @@ module {
   /// Mutates the cache if key needs to be derived
   ///
   /// @param cache - Current key cache (will be mutated)
-  /// @param keyName - The Schnorr key name
   /// @param principal - The Principal to get/derive key for
   /// @returns The encryption key
   public func getOrDeriveKey(
     cache : KeyCache,
-    keyName : Text,
     principal : Principal,
   ) : async [Nat8] {
+    let keyName = getSchnorrKeyName(Constants.ENVIRONMENT);
+
     // Check if key exists in cache
     switch (Map.get(cache, Principal.compare, principal)) {
       case (?key) {
         key;
       };
-      case null {
+      case (null) {
         // Key not in cache, derive it
         let key = await deriveKeyFromSchnorr(keyName, principal);
 

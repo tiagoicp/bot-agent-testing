@@ -64,7 +64,7 @@ suite(
         let provider = #groq;
         let apiKey = "test-key-123";
 
-        let (updatedKeys, result) = ApiKeysService.storeApiKey(
+        let result = ApiKeysService.storeApiKey(
           apiKeys,
           testKey,
           principal,
@@ -72,8 +72,6 @@ suite(
           provider,
           apiKey,
         );
-
-        apiKeys := updatedKeys;
 
         expect.result<(), Text>(result, resultToText, resultEqual).isOk();
 
@@ -99,7 +97,7 @@ suite(
 
         // Store first API key
         let firstKey = "original-key-123";
-        let (keysAfterFirst, result1) = ApiKeysService.storeApiKey(
+        let result1 = ApiKeysService.storeApiKey(
           apiKeys,
           testKey,
           principal,
@@ -107,7 +105,6 @@ suite(
           provider,
           firstKey,
         );
-        apiKeys := keysAfterFirst;
         expect.result<(), Text>(result1, resultToText, resultEqual).isOk();
 
         // Verify first key is stored
@@ -122,7 +119,7 @@ suite(
 
         // Update with a new API key
         let secondKey = "updated-key-456";
-        let (keysAfterSecond, result2) = ApiKeysService.storeApiKey(
+        let result2 = ApiKeysService.storeApiKey(
           apiKeys,
           testKey,
           principal,
@@ -130,7 +127,6 @@ suite(
           provider,
           secondKey,
         );
-        apiKeys := keysAfterSecond;
         expect.result<(), Text>(result2, resultToText, resultEqual).isOk();
 
         // Verify latest key is returned

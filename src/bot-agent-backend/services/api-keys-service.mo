@@ -79,7 +79,7 @@ module {
   /// @param agentId - The agent ID
   /// @param provider - The LLM provider
   /// @param apiKey - The plaintext API key to encrypt and store
-  /// @returns Updated map and result
+  /// @returns Result
   public func storeApiKey(
     apiKeys : ApiKeysMap,
     encryptionKey : [Nat8],
@@ -87,7 +87,7 @@ module {
     agentId : Nat,
     provider : LLMProvider,
     apiKey : Text,
-  ) : (ApiKeysMap, Result.Result<(), Text>) {
+  ) : Result.Result<(), Text> {
     let providerName = switch (provider) {
       case (#groq) { "groq" };
     };
@@ -114,7 +114,7 @@ module {
     // Store the updated map back
     Map.add(apiKeys, Principal.compare, principal, callerKeyMap);
 
-    (apiKeys, #ok(()));
+    #ok(());
   };
 
   /// Get caller's own API key identifiers (without decrypting the keys)
@@ -143,13 +143,13 @@ module {
   /// @param principal - The Principal whose key to delete
   /// @param agentId - The agent ID
   /// @param provider - The LLM provider
-  /// @returns Updated map and result
+  /// @returns Result
   public func deleteApiKey(
     apiKeys : ApiKeysMap,
     principal : Principal,
     agentId : Nat,
     provider : LLMProvider,
-  ) : (ApiKeysMap, Result.Result<(), Text>) {
+  ) : Result.Result<(), Text> {
     let providerName = switch (provider) {
       case (#groq) { "groq" };
     };
@@ -157,12 +157,12 @@ module {
 
     switch (Map.get(apiKeys, Principal.compare, principal)) {
       case (null) {
-        (apiKeys, #err("No API keys found for this principal"));
+        #err("No API keys found for this principal");
       };
       case (?callerKeyMap) {
         ignore Map.delete(callerKeyMap, compareNatTextTuple, key);
         Map.add(apiKeys, Principal.compare, principal, callerKeyMap);
-        (apiKeys, #ok(()));
+        #ok(());
       };
     };
   };
@@ -172,12 +172,10 @@ module {
   ///
   /// @param apiKeys - The encrypted API keys map
   /// @param principal - The Principal whose keys to delete
-  /// @returns Updated map
   public func deleteAllApiKeysForPrincipal(
     apiKeys : ApiKeysMap,
     principal : Principal,
-  ) : ApiKeysMap {
+  ) : () {
     ignore Map.delete(apiKeys, Principal.compare, principal);
-    apiKeys;
   };
 };

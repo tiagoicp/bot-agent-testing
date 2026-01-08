@@ -3,42 +3,38 @@ import Map "mo:core/Map";
 import Time "mo:core/Time";
 import List "mo:core/List";
 import Text "mo:core/Text";
-import Timer "mo:base/Timer";
+import Timer "mo:core/Timer";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
 import ConversationService "./services/conversation-service";
 import ApiKeysService "./services/api-keys-service";
 import KeyDerivationService "./services/key-derivation-service";
+import Constants "./constants";
 // import LLMWrapper "./wrappers/llm-wrapper";
 
 persistent actor {
+  // ============================================
+  // State
+  // ============================================
   var agents = Map.empty<Nat, AgentService.Agent>();
   var nextAgentId : Nat = 0;
   var admins : [Principal] = [];
   var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
-  var apiKeys : ApiKeysService.ApiKeysMap = Map.empty<Principal, Map.Map<(Nat, Text), ApiKeysService.EncryptedApiKey>>(); // Encrypted API keys
+  var apiKeys = Map.empty<Principal, Map.Map<(Nat, Text), ApiKeysService.EncryptedApiKey>>(); // Encrypted API keys
   var keyCache : KeyDerivationService.KeyCache = KeyDerivationService.clearCache(); // Cache of derived encryption keys
 
-  // Schnorr key name - use dfx_test_key for local, test_key_1 for IC
-  transient let schnorrKeyName : Text = KeyDerivationService.KEY_NAME_LOCAL;
-
   // ============================================
-  // Timer: Monthly Key Cache Clearing
+  // Timers Setup
   // ============================================
 
-  // 30 days in nanoseconds (30 * 24 * 60 * 60 * 1_000_000_000)
-  let THIRTY_DAYS_NS : Nat = 2_592_000_000_000_000;
-
-  // Clear the key cache - called monthly by timer
-  private func clearKeyCacheTimer() : async () {
-    keyCache := KeyDerivationService.clearCache();
-  };
-
+  // Clear Cache Timer
   // Set up recurring timer for monthly cache clearing
   // Timer is re-initialized on canister upgrade
   ignore Timer.recurringTimer<system>(
-    #nanoseconds(THIRTY_DAYS_NS),
-    clearKeyCacheTimer,
+    #nanoseconds(Constants.THIRTY_DAYS_NS),
+    func() : async () {
+      keyCache := KeyDerivationService.clearCache();
+    },
   );
 
   // Get conversation history
@@ -79,7 +75,7 @@ persistent actor {
       // var response = await llmWrapper.chat(message);
 
       // get api key (requires deriving encryption key first)
-      let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
+      let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, caller);
       let _apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, encryptionKey, caller, agentId, #groq);
 
       var response = "Hello! This is a placeholder response from the AI agent.";
@@ -191,11 +187,9 @@ persistent actor {
     };
 
     // Derive encryption key for this caller
-    let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, schnorrKeyName, caller);
+    let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, caller);
 
-    let (updatedApiKeys, result) = ApiKeysService.storeApiKey(apiKeys, encryptionKey, caller, agentId, provider, apiKey);
-    apiKeys := updatedApiKeys;
-    result;
+    ApiKeysService.storeApiKey(apiKeys, encryptionKey, caller, agentId, provider, apiKey);
   };
 
   // Get caller's own API keys
