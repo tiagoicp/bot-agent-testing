@@ -585,6 +585,21 @@ describe("Bot Agent Backend", () => {
           "API key cannot be empty",
         );
       });
+
+      it("should reject storing API key when provider does not match agent's provider", async () => {
+        // Agent was created with OpenAI provider
+        // Try to store a Groq API key for it
+        const result = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-groq-key",
+        );
+        expect("err" in result).toBe(true);
+        const errorMsg = "err" in result ? result.err : "";
+        expect(errorMsg).toContain("Provider mismatch");
+        expect(errorMsg).toContain("openai");
+        expect(errorMsg).toContain("groq");
+      });
     });
 
     describe("get_my_api_keys", () => {

@@ -21,7 +21,7 @@ persistent actor {
   var admins : [Principal] = [];
   var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
   var apiKeys = Map.empty<Principal, Map.Map<(Nat, Text), ApiKeysService.EncryptedApiKey>>(); // Encrypted API keys
-  var keyCache : KeyDerivationService.KeyCache = KeyDerivationService.clearCache(); // Cache of derived encryption keys
+  transient var keyCache : KeyDerivationService.KeyCache = KeyDerivationService.clearCache(); // Cache of derived encryption keys
 
   // ============================================
   // Timers Setup
@@ -37,67 +37,42 @@ persistent actor {
     },
   );
 
-  // Get conversation history
-  public shared ({ caller }) func getConversation(agentId : Nat) : async {
-    #ok : [ConversationService.Message];
+  // ============================================
+  // Admin Management
+  // ============================================
+
+  // Add a new admin
+  public shared ({ caller }) func addAdmin(newAdmin : Principal) : async {
+    #ok : ();
     #err : Text;
   } {
-    ConversationService.getConversation(conversations, caller, agentId);
-  };
+    admins := AdminService.initializeFirstAdmin(caller, admins);
 
-  public shared ({ caller }) func talkTo(agentId : Nat, message : Text) : async {
-    #ok : Text;
-    #err : Text;
-  } {
-    if (Principal.isAnonymous(caller)) {
-      #err("Please login before calling this function");
-    } else {
-
-      ConversationService.addMessageToConversation(
-        conversations,
-        caller,
-        agentId,
-        {
-          author = #user;
-          content = message;
-          timestamp = Time.now();
-        },
-      );
-
-      // decide which tool?
-      // for now, just mo:llm
-
-      // call the tool
-      // call chat mo:llm with the conversation history
-      // Initialize LLM wrapper with default model
-      // commenting, since there isn't a local / test version of llm canister
-      // let llmWrapper = LLMWrapper.LLMWrapper(null);
-      // var response = await llmWrapper.chat(message);
-
-      // get api key (requires deriving encryption key first)
-      let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, caller);
-      let _apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, encryptionKey, caller, agentId, #groq);
-
-      var response = "Hello! This is a placeholder response from the AI agent.";
-
-      // evaluate response and decide to terminate loop or continue
-      // for now, just terminate
-
-      // Store and Deliver response
-      ConversationService.addMessageToConversation(
-        conversations,
-        caller,
-        agentId,
-        {
-          author = #agent;
-          content = response;
-          timestamp = Time.now();
-        },
-      );
-
-      #ok("Response from AI Agent " # debug_show (agentId) # ": " # response);
+    let validation = AdminService.validateNewAdmin(newAdmin, caller, admins);
+    switch (validation) {
+      case (#err(msg)) {
+        #err(msg);
+      };
+      case (#ok(())) {
+        admins := AdminService.addAdminToList(newAdmin, admins);
+        #ok(());
+      };
     };
   };
+
+  // Get list of admins
+  public query func getAdmins() : async [Principal] {
+    admins;
+  };
+
+  // Check if caller is admin
+  public shared ({ caller }) func isCallerAdmin() : async Bool {
+    AdminService.isAdmin(caller, admins);
+  };
+
+  // ============================================
+  // Agent Management
+  // ============================================
 
   // Create a new agent
   public shared ({ caller }) func createAgent(name : Text, provider : AgentService.Provider, model : Text) : async {
@@ -144,34 +119,75 @@ persistent actor {
     AgentService.listAgents(agents);
   };
 
-  // Add a new admin
-  public shared ({ caller }) func addAdmin(newAdmin : Principal) : async {
-    #ok : ();
+  // ============================================
+  // Conversation Management
+  // ============================================
+
+  // Get conversation history
+  public shared ({ caller }) func getConversation(agentId : Nat) : async {
+    #ok : [ConversationService.Message];
     #err : Text;
   } {
-    admins := AdminService.initializeFirstAdmin(caller, admins);
+    ConversationService.getConversation(conversations, caller, agentId);
+  };
 
-    let validation = AdminService.validateNewAdmin(newAdmin, caller, admins);
-    switch (validation) {
-      case (#err(msg)) {
-        #err(msg);
-      };
-      case (#ok(())) {
-        admins := AdminService.addAdminToList(newAdmin, admins);
-        #ok(());
-      };
+  public shared ({ caller }) func talkTo(agentId : Nat, message : Text) : async {
+    #ok : Text;
+    #err : Text;
+  } {
+    if (Principal.isAnonymous(caller)) {
+      #err("Please login before calling this function");
+    } else {
+
+      // get api key (requires deriving encryption key first)
+      let encryptionKey = await KeyDerivationService.getOrDeriveKey(keyCache, caller);
+      let _apiKey = ApiKeysService.getApiKeyForCallerAndAgent(apiKeys, encryptionKey, caller, agentId, #groq);
+
+      ConversationService.addMessageToConversation(
+        conversations,
+        caller,
+        agentId,
+        {
+          author = #user;
+          content = message;
+          timestamp = Time.now();
+        },
+      );
+
+      // decide which tool?
+      // for now, just mo:llm
+
+      // call the tool
+      // call chat mo:llm with the conversation history
+      // Initialize LLM wrapper with default model
+      // commenting, since there isn't a local / test version of llm canister
+      // let llmWrapper = LLMWrapper.LLMWrapper(null);
+      // var response = await llmWrapper.chat(message);
+
+      var response = "Hello! This is a placeholder response from the AI agent.";
+
+      // evaluate response and decide to terminate loop or continue
+      // for now, just terminate
+
+      // Store and Deliver response
+      ConversationService.addMessageToConversation(
+        conversations,
+        caller,
+        agentId,
+        {
+          author = #agent;
+          content = response;
+          timestamp = Time.now();
+        },
+      );
+
+      #ok("Response from AI Agent " # debug_show (agentId) # ": " # response);
     };
   };
 
-  // Get list of admins
-  public query func getAdmins() : async [Principal] {
-    admins;
-  };
-
-  // Check if caller is admin
-  public shared ({ caller }) func isCallerAdmin() : async Bool {
-    AdminService.isAdmin(caller, admins);
-  };
+  // ============================================
+  // API Key Management
+  // ============================================
 
   // Store an API key for an agent (encrypted at rest)
   public shared ({ caller }) func storeApiKey(agentId : Nat, provider : ApiKeysService.LLMProvider, apiKey : Text) : async {
@@ -180,10 +196,18 @@ persistent actor {
   } {
     if (Principal.isAnonymous(caller)) {
       return #err("Please login before calling this function");
-    } else if (AgentService.getAgent(agentId, agents) == null) {
-      return #err("Agent not found");
     } else if (Text.trim(apiKey, #char ' ') == "") {
       return #err("API key cannot be empty");
+    } else {
+      let agent = AgentService.getAgent(agentId, agents);
+      switch (agent) {
+        case (null) { return #err("Agent not found") };
+        case (?foundAgent) {
+          if (foundAgent.provider != provider) {
+            return #err("Provider mismatch: Agent uses " # debug_show (foundAgent.provider) # " but you specified " # debug_show (provider) # ".");
+          };
+        };
+      };
     };
 
     // Derive encryption key for this caller
@@ -204,7 +228,7 @@ persistent actor {
   };
 
   // ============================================
-  // Admin: Cache Management
+  // Key Cache Management
   // ============================================
 
   // Manually clear the key cache (admin only)

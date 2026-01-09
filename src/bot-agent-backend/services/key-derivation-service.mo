@@ -75,8 +75,8 @@ module {
   public func getSchnorrKeyName(env : Types.Environment) : Text {
     switch (env) {
       case (#local) { KEY_NAME_LOCAL };
-      case (#test) { KEY_NAME_TEST };
-      case (#staging) { KEY_NAME_PROD }; // Use prod key for staging
+      case (#test) { KEY_NAME_LOCAL };
+      case (#staging) { KEY_NAME_TEST };
       case (#production) { KEY_NAME_PROD };
     };
   };
@@ -104,12 +104,12 @@ module {
   /// 1. Call sign_with_schnorr with Principal as derivation path
   /// 2. Hash the signature with SHA256 to get a 32-byte key
   ///
-  /// @param keyName - The Schnorr key name (dfx_test_key, test_key_1, or key_1)
   /// @param principal - The Principal to derive a key for
   /// @returns A 32-byte encryption key as [Nat8]
-  public func deriveKeyFromSchnorr(keyName : Text, principal : Principal) : async [Nat8] {
+  public func deriveKeyFromSchnorr(principal : Principal) : async [Nat8] {
     // Get reference to management canister
     let ic : ManagementCanister = actor ("aaaaa-aa");
+    let keyName = getSchnorrKeyName(Constants.ENVIRONMENT);
 
     // Prepare the signing request
     let signArgs : SignWithSchnorrArgs = {
@@ -141,8 +141,6 @@ module {
     cache : KeyCache,
     principal : Principal,
   ) : async [Nat8] {
-    let keyName = getSchnorrKeyName(Constants.ENVIRONMENT);
-
     // Check if key exists in cache
     switch (Map.get(cache, Principal.compare, principal)) {
       case (?key) {
@@ -150,7 +148,7 @@ module {
       };
       case (null) {
         // Key not in cache, derive it
-        let key = await deriveKeyFromSchnorr(keyName, principal);
+        let key = await deriveKeyFromSchnorr(principal);
 
         // Add to cache
         Map.add(cache, Principal.compare, principal, key);
@@ -164,12 +162,6 @@ module {
   /// Should be called monthly via Timer
   public func clearCache() : KeyCache {
     Map.empty<Principal, [Nat8]>();
-  };
-
-  /// Remove a specific Principal from the cache
-  /// Useful when a user's API keys are deleted
-  public func removeFromCache(cache : KeyCache, principal : Principal) {
-    Map.remove(cache, Principal.compare, principal);
   };
 
   /// Get cache size (for monitoring)
