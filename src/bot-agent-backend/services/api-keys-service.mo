@@ -59,12 +59,8 @@ module {
           case (?encryptedBlob) {
             // Decrypt the API key
             let encryptedBytes = Blob.toArray(encryptedBlob);
-            switch (EncryptionService.decrypt(encryptionKey, encryptedBytes)) {
-              case (null) { null }; // Decryption failed (wrong key or tampered data)
-              case (?decryptedBytes) {
-                EncryptionService.bytesToText(decryptedBytes);
-              };
-            };
+            let decryptedBytes = EncryptionService.decrypt(encryptionKey, encryptedBytes);
+            EncryptionService.bytesToText(decryptedBytes);
           };
         };
       };

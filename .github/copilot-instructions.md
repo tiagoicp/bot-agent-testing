@@ -36,6 +36,14 @@ Examples:
 
 **Guard rails (authentication, authorization, validation)** must be implemented at the **controller level (main.mo)**, not buried inside service functions.
 
+## Testing Practices
+
+### Prefer `expect` Over `assert`
+
+In Motoko tests, **use `expect` syntax instead of `assert`**. The `expect` API provides better error messages with actual vs expected values.
+
+Refer to `.mops/test@{version}/README.md` for complete `expect` documentation and examples.
+
 ## How to Verify Your Work
 
 ### For Motoko Code
@@ -54,7 +62,7 @@ If it's unit tests you modified, run the tests instead:
 mops test
 ```
 
-### For TypeScript Tests
+### For TypeScript Code
 
 Use the TypeScript compiler to verify integration tests code:
 

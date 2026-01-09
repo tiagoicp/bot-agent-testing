@@ -23,7 +23,7 @@ module {
   let NONCE_SIZE : Nat = 8;
 
   /// Generate unique 8-byte nonce from caller principal hash + timestamp
-  public func generateNonce(caller : Principal) : [Nat8] {
+  func generateNonce(caller : Principal) : [Nat8] {
     let time = Int.abs(Time.now());
     let principalHash = Principal.hash(caller);
     let combined = Nat32.toNat(principalHash) + time;
@@ -36,10 +36,9 @@ module {
       },
     );
   };
-  let _BLOCK_SIZE : Nat = 32; // SHA256 output size (kept for documentation)
 
   /// Convert Nat64 to big-endian byte array (8 bytes)
-  public func nat64ToBytes(n : Nat64) : [Nat8] {
+  func nat64ToBytes(n : Nat64) : [Nat8] {
     [
       Nat8.fromNat(Nat64.toNat((n >> 56) & 0xFF)),
       Nat8.fromNat(Nat64.toNat((n >> 48) & 0xFF)),
@@ -53,7 +52,7 @@ module {
   };
 
   /// XOR two byte arrays of equal length
-  public func xorBytes(a : [Nat8], b : [Nat8]) : [Nat8] {
+  func xorBytes(a : [Nat8], b : [Nat8]) : [Nat8] {
     Array.tabulate<Nat8>(
       a.size(),
       func(i : Nat) : Nat8 {
@@ -62,23 +61,9 @@ module {
     );
   };
 
-  /// Compare two byte arrays for equality (constant-time for security)
-  public func arrayEqual(a : [Nat8], b : [Nat8]) : Bool {
-    if (a.size() != b.size()) {
-      return false;
-    };
-
-    var result : Nat8 = 0;
-    for (i in Nat.range(0, a.size())) {
-      result := result | (a[i] ^ b[i]);
-    };
-
-    result == 0;
-  };
-
   /// Generate a single keystream block using SHA256
   /// keystream_block = SHA256(key ++ nonce ++ counter)
-  public func generateKeystreamBlock(key : [Nat8], nonce : [Nat8], counter : Nat64) : [Nat8] {
+  func generateKeystreamBlock(key : [Nat8], nonce : [Nat8], counter : Nat64) : [Nat8] {
     let counterBytes = nat64ToBytes(counter);
 
     // Concatenate: key ++ nonce ++ counter
@@ -94,7 +79,7 @@ module {
   };
 
   /// Generate keystream of required length
-  public func generateKeystream(key : [Nat8], nonce : [Nat8], length : Nat) : [Nat8] {
+  func generateKeystream(key : [Nat8], nonce : [Nat8], length : Nat) : [Nat8] {
     if (length == 0) {
       return [];
     };
@@ -124,6 +109,8 @@ module {
   ///
   /// Returns: [nonce (8 bytes)] [ciphertext]
   public func encrypt(key : [Nat8], plaintext : [Nat8], caller : Principal) : [Nat8] {
+    assert key.size() == 32;
+
     // Generate unique nonce from caller + timestamp
     let nonce = generateNonce(caller);
 
@@ -150,14 +137,14 @@ module {
   /// - key: 32-byte encryption key (same key used for encryption)
   /// - encrypted: [nonce (8 bytes)] [ciphertext]
   ///
-  /// Returns: ?plaintext (null if data is too short)
-  public func decrypt(key : [Nat8], encrypted : [Nat8]) : ?[Nat8] {
-    let minSize = NONCE_SIZE;
+  /// Returns: plaintext
+  public func decrypt(key : [Nat8], encrypted : [Nat8]) : [Nat8] {
+    // Validate key size
+    assert key.size() == 32;
 
     // Validate minimum size
-    if (encrypted.size() < minSize) {
-      return null;
-    };
+    let minSize = NONCE_SIZE;
+    assert encrypted.size() >= minSize;
 
     // Extract components
     let nonce = Array.tabulate<Nat8>(NONCE_SIZE, func(i : Nat) : Nat8 { encrypted[i] });
@@ -166,11 +153,11 @@ module {
 
     // Decrypt
     if (ciphertextSize == 0) {
-      return ?[];
+      return [];
     };
 
     let keystream = generateKeystream(key, nonce, ciphertextSize);
-    ?xorBytes(ciphertext, keystream);
+    xorBytes(ciphertext, keystream);
   };
 
   /// Convert Text to [Nat8] (UTF-8 encoding)
