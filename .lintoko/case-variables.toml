@@ -1,0 +1,14 @@
+name = "case-variables"
+description = "Variables should use camelCase."
+query = """
+[
+  (let_dec
+    (var_pat 
+      (identifier) @ident @error
+      (#match? @ident "^[^_].*_")))
+  (var_dec
+    (var_pat 
+      (identifier) @ident @error
+      (#match? @ident "^[^_].*_")))
+]
+"""

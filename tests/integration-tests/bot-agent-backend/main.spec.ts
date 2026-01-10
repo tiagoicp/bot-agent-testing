@@ -1,0 +1,1178 @@
+// Import Bun testing globals
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { resolve } from "node:path";
+import {
+  PocketIc,
+  generateRandomIdentity,
+  SubnetStateType,
+} from "@dfinity/pic";
+import { Principal } from "@dfinity/principal";
+
+// Import generated types for your canister
+import { type _SERVICE } from "../../../.dfx/local/canisters/bot-agent-backend/service.did.js";
+import { idlFactory } from "../../../.dfx/local/canisters/bot-agent-backend/service.did.js";
+import { type Actor } from "@dfinity/pic";
+
+// Helper to generate valid principals for testing
+function generateTestPrincipal(seed: number): Principal {
+  // Create a valid principal from seed
+  const bytes = new Uint8Array(29);
+  bytes[0] = 0; // Type byte for principal
+  bytes.set(new TextEncoder().encode(`test${seed}`), 1);
+  return Principal.fromUint8Array(bytes);
+}
+
+// Define the path to your canister's WASM file
+export const WASM_PATH = resolve(
+  import.meta.dir,
+  "..",
+  "..",
+  "..",
+  ".dfx",
+  "local",
+  "canisters",
+  "bot-agent-backend",
+  "bot-agent-backend.wasm",
+);
+
+// The `describe` function is used to group tests together
+// and is completely optional.
+describe("Bot Agent Backend", () => {
+  // Define variables to hold our PocketIC instance, canister ID,
+  // and an actor to interact with our canister.
+  let pic: PocketIc;
+  let actor: Actor<_SERVICE>;
+
+  // The `beforeEach` hook runs before each test.
+  //
+  // This can be replaced with a `beforeAll` hook to persist canister
+  // state between tests.
+  beforeEach(async () => {
+    // create a new PocketIC instance with fiduciary subnet for Schnorr signing
+    pic = await PocketIc.create(process.env.PIC_URL || "", {
+      fiduciary: {
+        state: { type: SubnetStateType.New },
+      },
+    });
+
+    // Setup the canister and actor
+    const fixture = await pic.setupCanister<_SERVICE>({
+      idlFactory,
+      wasm: WASM_PATH,
+    });
+
+    // Save the actor and canister ID for use in tests
+    actor = fixture.actor;
+  });
+
+  // The `afterEach` hook runs after each test.
+  //
+  // This should be replaced with an `afterAll` hook if you use
+  // a `beforeAll` hook instead of a `beforeEach` hook.
+  afterEach(async () => {
+    // tear down the PocketIC instance
+    await pic.tearDown();
+  });
+
+  // ============ TIMER MANAGEMENT TESTS ============
+
+  describe("Timer Management", () => {
+    describe("Cache clearing timer", () => {
+      it("should clear the key cache after 30 days", async () => {
+        const adminIdentity = generateRandomIdentity();
+        const userIdentity = generateRandomIdentity();
+
+        // Set up admin (first caller becomes admin automatically)
+        actor.setIdentity(adminIdentity);
+        await actor.addAdmin(generateTestPrincipal(999));
+
+        // Create an agent as admin
+        const createResult = await actor.createAgent(
+          "Timer Test Agent",
+          { groq: null },
+          "llama-3.3-70b-versatile",
+        );
+        expect("ok" in createResult).toBe(true);
+        const agentId = "ok" in createResult ? createResult.ok : 0n;
+
+        // Store an API key as user (this will derive and cache an encryption key)
+        actor.setIdentity(userIdentity);
+        const storeResult = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-api-key-for-timer",
+        );
+        expect("ok" in storeResult).toBe(true);
+
+        // Verify cache now has 1 entry
+        actor.setIdentity(adminIdentity);
+        const afterStoreStats = await actor.getKeyCacheStats();
+        expect("ok" in afterStoreStats).toBe(true);
+        const afterStoreSize =
+          "ok" in afterStoreStats ? afterStoreStats.ok.size : 0n;
+        expect(afterStoreSize).toBe(1n);
+
+        // Advance time by 30 days (2_592_000_000 milliseconds = 30 days)
+        const thirtyDaysMs = 2_592_000_000;
+        await pic.advanceTime(thirtyDaysMs);
+
+        // Tick to trigger timers
+        await pic.tick();
+
+        // Check cache size - should be cleared (0)
+        const finalStats = await actor.getKeyCacheStats();
+        expect("ok" in finalStats).toBe(true);
+        const finalSize = "ok" in finalStats ? finalStats.ok.size : 999n;
+        expect(finalSize).toBe(0n);
+      });
+    });
+  });
+
+  // ============ ADMIN MANAGEMENT TESTS ============
+
+  describe("Admin Management", () => {
+    describe("add_admin", () => {
+      it("should reject anonymous users from adding admins", async () => {
+        // caller will be anonymous
+        actor.setPrincipal(Principal.anonymous());
+
+        const newAdminPrincipal = generateTestPrincipal(1);
+        const result = await actor.addAdmin(newAdminPrincipal);
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Anonymous users cannot be admins",
+        );
+      });
+
+      it("should reject duplicate admin addition attempts", async () => {
+        const samePrincipal = generateTestPrincipal(2);
+
+        // caller will be a non-anonymous principal
+        actor.setIdentity(generateRandomIdentity());
+
+        // add first admin
+        await actor.addAdmin(samePrincipal);
+
+        // Second call should fail due to being duplicate
+        const result = await actor.addAdmin(samePrincipal);
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Principal is already an admin",
+        );
+      });
+    });
+
+    describe("get_admins", () => {
+      it("should return an array of admin principals", async () => {
+        const somePrincipal = generateTestPrincipal(1);
+
+        // caller will be a non-anonymous principal
+        actor.setIdentity(generateRandomIdentity());
+
+        // add first admin
+        await actor.addAdmin(somePrincipal);
+
+        const adminsList = await actor.getAdmins();
+        expect(adminsList[1]).toEqual(somePrincipal);
+      });
+    });
+
+    describe("is_caller_admin", () => {
+      it("should return false for non-admin caller", async () => {
+        // Without setting up as admin, caller should not be admin
+        const isAdmin = await actor.isCallerAdmin();
+        expect(isAdmin).toBe(false);
+      });
+
+      it("should return true for admin caller", async () => {
+        const identity = generateRandomIdentity();
+        const principalOfIdentity = identity.getPrincipal();
+
+        // Set the caller identity
+        actor.setIdentity(identity);
+
+        // Add the caller as admin
+        await actor.addAdmin(principalOfIdentity);
+
+        // Now check if caller is admin
+        const isAdmin = await actor.isCallerAdmin();
+        expect(isAdmin).toBe(true);
+      });
+    });
+  });
+
+  // ============ AGENT MANAGEMENT TESTS ============
+
+  describe("Agent Management", () => {
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
+    let adminPrincipal: Principal;
+
+    beforeEach(async () => {
+      // Set up an admin for testing agent operations
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.addAdmin(adminPrincipal);
+    });
+
+    describe("create_agent", () => {
+      it("should reject agent creation from non-admin user", async () => {
+        const nonAdminIdentity = generateRandomIdentity();
+        actor.setIdentity(nonAdminIdentity);
+
+        const result = await actor.createAgent(
+          "Test Agent",
+          { openai: null },
+          "gpt-4",
+        );
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Only admins can create agents",
+        );
+      });
+
+      it("should reject agent creation with empty name", async () => {
+        const result = await actor.createAgent("", { openai: null }, "gpt-4");
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Agent name cannot be empty",
+        );
+      });
+
+      it("should successfully create an agent with admin user and all params", async () => {
+        const result = await actor.createAgent(
+          "OpenAI Agent",
+          { openai: null },
+          "gpt-4",
+        );
+        expect("ok" in result).toBe(true);
+        expect("ok" in result ? result.ok : null).toEqual(0n);
+      });
+
+      it("should create multiple agents with incrementing IDs", async () => {
+        const result1 = await actor.createAgent(
+          "Agent 1",
+          { openai: null },
+          "gpt-4",
+        );
+        if ("err" in result1) {
+          throw new Error(`Failed to create agent 1: ${result1.err}`);
+        }
+        const id1 = result1.ok;
+
+        const result2 = await actor.createAgent(
+          "Agent 2",
+          { llmcanister: null },
+          "llama",
+        );
+        if ("err" in result2) {
+          throw new Error(`Failed to create agent 2: ${result2.err}`);
+        }
+        const id2 = result2.ok;
+
+        expect(id1).toEqual(0n);
+        expect(id2).toEqual(1n);
+      });
+    });
+
+    describe("get_agent", () => {
+      it("should return null for non-existent agent", async () => {
+        const agent = await actor.getAgent(999n);
+        // Candid handles an optional custom type as an array with 0 or 1 elements
+        // an empty array means null in Motoko
+        expect(agent).toEqual([]);
+      });
+
+      it("should return an agent that exists", async () => {
+        const createResult = await actor.createAgent(
+          "Test Agent",
+          { openai: null },
+          "gpt-4",
+        );
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
+
+        const agent = await actor.getAgent(agentId);
+        if (agent.length === 0) {
+          throw new Error("Agent should exist but was not found");
+        }
+        const agentData = agent[0];
+        expect(agentData.id).toEqual(agentId);
+        expect(agentData.name).toEqual("Test Agent");
+        expect(agentData.provider).toEqual({ openai: null });
+        expect(agentData.model).toEqual("gpt-4");
+      });
+    });
+
+    describe("update_agent", () => {
+      it("should reject update from non-admin user", async () => {
+        // Try to update as non-admin
+        const nonAdminIdentity = generateRandomIdentity();
+        actor.setIdentity(nonAdminIdentity);
+
+        const updateResult = await actor.updateAgent(
+          0n,
+          ["Updated Name"],
+          [],
+          [],
+        );
+        expect("err" in updateResult).toBe(true);
+        expect("err" in updateResult ? updateResult.err : "").toEqual(
+          "Only admins can update agents",
+        );
+      });
+
+      it("should reject update of non-existent agent", async () => {
+        const result = await actor.updateAgent(999n, [], [], []);
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual("Agent not found");
+      });
+
+      it("should update agent name only", async () => {
+        const createResult = await actor.createAgent(
+          "Original",
+          { openai: null },
+          "gpt-4",
+        );
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
+
+        const updateResult = await actor.updateAgent(
+          agentId,
+          ["Updated Name"],
+          [],
+          [],
+        );
+        expect("ok" in updateResult).toBe(true);
+
+        const agent = await actor.getAgent(agentId);
+        if (agent.length === 0) {
+          throw new Error("Agent should exist but was not found");
+        }
+        const agentData = agent[0];
+        expect(agentData.name).toEqual("Updated Name");
+        expect(agentData.model).toEqual("gpt-4");
+      });
+
+      it("should update all agent fields", async () => {
+        const createResult = await actor.createAgent(
+          "Original",
+          { openai: null },
+          "gpt-3.5",
+        );
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
+
+        const updateResult = await actor.updateAgent(
+          agentId,
+          ["New Agent Name"],
+          [{ llmcanister: null }],
+          ["llama2"],
+        );
+        expect("ok" in updateResult).toBe(true);
+
+        const agent = await actor.getAgent(agentId);
+        if (agent.length === 0) {
+          throw new Error("Agent should exist but was not found");
+        }
+        const agentData = agent[0];
+        expect(agentData.name).toEqual("New Agent Name");
+        expect(agentData.provider).toEqual({ llmcanister: null });
+        expect(agentData.model).toEqual("llama2");
+      });
+    });
+
+    describe("delete_agent", () => {
+      it("should reject deletion from non-admin user", async () => {
+        // Try to delete as non-admin
+        const nonAdminIdentity = generateRandomIdentity();
+        actor.setIdentity(nonAdminIdentity);
+
+        const deleteResult = await actor.deleteAgent(0n);
+        expect("err" in deleteResult).toBe(true);
+        expect("err" in deleteResult ? deleteResult.err : "").toEqual(
+          "Only admins can delete agents",
+        );
+      });
+
+      it("should reject deletion of non-existent agent", async () => {
+        const result = await actor.deleteAgent(999n);
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual("Agent not found");
+      });
+
+      it("should successfully delete an agent", async () => {
+        const createResult = await actor.createAgent(
+          "Agent to Delete",
+          { openai: null },
+          "gpt-4",
+        );
+        if ("err" in createResult) {
+          throw new Error(`Failed to create agent: ${createResult.err}`);
+        }
+        const agentId = createResult.ok;
+
+        const deleteResult = await actor.deleteAgent(agentId);
+        expect("ok" in deleteResult).toBe(true);
+
+        const agent = await actor.getAgent(agentId);
+        expect(agent).toEqual([]);
+      });
+    });
+
+    describe("list_agents", () => {
+      it("should return all created agents", async () => {
+        await actor.createAgent("Agent 1", { openai: null }, "gpt-4");
+        await actor.createAgent("Agent 2", { groq: null }, "mixtral");
+        await actor.createAgent("Agent 3", { llmcanister: null }, "llama2");
+
+        const agents = await actor.listAgents();
+        expect(agents.length).toEqual(3);
+        expect(agents[1].id).toEqual(1n);
+        expect(agents[1].name).toEqual("Agent 2");
+        expect(agents[1].provider).toEqual({ groq: null });
+        expect(agents[1].model).toEqual("mixtral");
+      });
+    });
+  });
+
+  // ============ CONVERSATION TESTS ============
+
+  describe("Conversation Management", () => {
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
+    let adminPrincipal: Principal;
+    let userIdentity: ReturnType<typeof generateRandomIdentity>;
+    let agentId: bigint;
+
+    beforeEach(async () => {
+      // Set up an admin
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.addAdmin(adminPrincipal);
+
+      // Create a test agent
+      const createResult = await actor.createAgent(
+        "Test Conversation Agent",
+        { openai: null },
+        "gpt-4",
+      );
+      if ("err" in createResult) {
+        throw new Error(`Failed to create agent: ${createResult.err}`);
+      }
+      agentId = createResult.ok;
+
+      // Set up a regular user
+      userIdentity = generateRandomIdentity();
+      actor.setIdentity(userIdentity);
+    });
+
+    describe("talk_to", () => {
+      it("should reject anonymous users from sending messages", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.talkTo(agentId, "Hello Agent");
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should accept message from authenticated user", async () => {
+        const result = await actor.talkTo(agentId, "Hello Agent");
+        expect("ok" in result).toBe(true);
+      });
+    });
+
+    describe("get_conversation", () => {
+      it("should return err message when no conversation exists with agent", async () => {
+        const result = await actor.getConversation(agentId);
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "No conversation found with agent " + agentId,
+        );
+      });
+
+      it("should contain correct message content in conversation history", async () => {
+        const testMessage = "This is a test message";
+        await actor.talkTo(agentId, testMessage);
+
+        const result = await actor.getConversation(agentId);
+        expect("ok" in result).toBe(true);
+        const messages = "ok" in result ? result.ok : [];
+
+        const userMessage = messages.find(
+          (msg: { author?: Record<string, unknown>; content?: string }) =>
+            msg.author && "user" in msg.author,
+        );
+        expect(userMessage).toBeDefined();
+        expect(userMessage?.content).toEqual(testMessage);
+      });
+
+      it("should maintain conversation history across multiple messages", async () => {
+        const message1 = "First message";
+        const message2 = "Second message";
+        const message3 = "Third message";
+
+        await actor.talkTo(agentId, message1);
+        await actor.talkTo(agentId, message2);
+        await actor.talkTo(agentId, message3);
+
+        const result = await actor.getConversation(agentId);
+        expect("ok" in result).toBe(true);
+        const messages = "ok" in result ? result.ok : [];
+        expect(messages.length).toBeGreaterThanOrEqual(3);
+      });
+
+      it("should isolate conversations between different agents", async () => {
+        // Create another agent
+        actor.setIdentity(adminIdentity);
+        const createResult2 = await actor.createAgent(
+          "Another Agent",
+          { groq: null },
+          "mixtral",
+        );
+        if ("err" in createResult2) {
+          throw new Error(`Failed to create agent: ${createResult2.err}`);
+        }
+        const agentId2 = createResult2.ok;
+
+        // Switch back to user and send messages to different agents
+        actor.setIdentity(userIdentity);
+        const message1 = "Message for first agent";
+        const message2 = "Message for second agent";
+
+        await actor.talkTo(agentId, message1);
+        await actor.talkTo(agentId2, message2);
+
+        // Check conversation history for first agent
+        const result1 = await actor.getConversation(agentId);
+        const messages1 = "ok" in result1 ? result1.ok : [];
+        const foundMsg1 = messages1.some(
+          (msg: { content?: string }) => msg.content === message1,
+        );
+        expect(foundMsg1).toBe(true);
+
+        // Check conversation history for second agent
+        const result2 = await actor.getConversation(agentId2);
+        const messages2 = "ok" in result2 ? result2.ok : [];
+        const foundMsg2 = messages2.some(
+          (msg: { content?: string }) => msg.content === message2,
+        );
+        expect(foundMsg2).toBe(true);
+      });
+    });
+  });
+
+  // ============ API KEY MANAGEMENT TESTS ============
+
+  describe("API Key Management", () => {
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
+    let adminPrincipal: Principal;
+    let userIdentity: ReturnType<typeof generateRandomIdentity>;
+    let agentId: bigint;
+
+    beforeEach(async () => {
+      // Set up an admin
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.addAdmin(adminPrincipal);
+
+      // Create a test agent
+      const createResult = await actor.createAgent(
+        "Test API Key Agent",
+        { openai: null },
+        "gpt-4",
+      );
+      if ("err" in createResult) {
+        throw new Error(`Failed to create agent: ${createResult.err}`);
+      }
+      agentId = createResult.ok;
+
+      // Set up a regular user
+      userIdentity = generateRandomIdentity();
+      actor.setIdentity(userIdentity);
+    });
+
+    describe("store_api_key", () => {
+      it("should reject anonymous users from storing API keys", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "test-key-123",
+        );
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should reject storing API key for non-existent agent", async () => {
+        const result = await actor.storeApiKey(
+          999n,
+          { openai: null },
+          "test-key-123",
+        );
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual("Agent not found");
+      });
+
+      it("should reject storing empty or whitespace only API key", async () => {
+        const result = await actor.storeApiKey(agentId, { openai: null }, "");
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "API key cannot be empty",
+        );
+
+        const result2 = await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "   ",
+        );
+        expect("err" in result2).toBe(true);
+        expect("err" in result2 ? result2.err : "").toEqual(
+          "API key cannot be empty",
+        );
+      });
+
+      it("should reject storing API key when provider does not match agent's provider", async () => {
+        // Agent was created with OpenAI provider
+        // Try to store a Groq API key for it
+        const result = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-groq-key",
+        );
+        expect("err" in result).toBe(true);
+        const errorMsg = "err" in result ? result.err : "";
+        expect(errorMsg).toContain("Provider mismatch");
+        expect(errorMsg).toContain("openai");
+        expect(errorMsg).toContain("groq");
+      });
+    });
+
+    describe("get_my_api_keys", () => {
+      it("should reject anonymous users from retrieving API keys", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.getMyApiKeys();
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should return empty array when user has no API keys", async () => {
+        const result = await actor.getMyApiKeys();
+        expect("ok" in result).toBe(true);
+        const keys = "ok" in result ? result.ok : [];
+        expect(keys).toEqual([]);
+      });
+
+      it("should return only caller's API keys, not other users' keys", async () => {
+        // Store key as first user
+        await actor.storeApiKey(agentId, { openai: null }, "user-one-key");
+
+        // Switch to second user
+        const secondUserIdentity = generateRandomIdentity();
+        actor.setIdentity(secondUserIdentity);
+
+        // Second user should have no keys
+        const resultBefore = await actor.getMyApiKeys();
+        expect("ok" in resultBefore).toBe(true);
+        const keysBefore = "ok" in resultBefore ? resultBefore.ok : [];
+        expect(keysBefore.length).toEqual(0);
+
+        // Store a key as second user
+        await actor.storeApiKey(agentId, { openai: null }, "user-two-key");
+
+        // Now second user should have exactly 1 key
+        const resultAfter = await actor.getMyApiKeys();
+        expect("ok" in resultAfter).toBe(true);
+        const keysAfter = "ok" in resultAfter ? resultAfter.ok : [];
+        expect(keysAfter.length).toEqual(1);
+
+        // Switch back to first user
+        actor.setIdentity(userIdentity);
+        const firstUserResult = await actor.getMyApiKeys();
+        expect("ok" in firstUserResult).toBe(true);
+        const firstUserKeys = "ok" in firstUserResult ? firstUserResult.ok : [];
+        expect(firstUserKeys.length).toEqual(1);
+      });
+
+      it("should maintain API key list after storing multiple keys", async () => {
+        // Create multiple agents
+        actor.setIdentity(adminIdentity);
+        const agent1 = agentId;
+        const createResult2 = await actor.createAgent(
+          "Agent 2",
+          { groq: null },
+          "mixtral",
+        );
+        if ("err" in createResult2) {
+          throw new Error(`Failed to create agent 2: ${createResult2.err}`);
+        }
+        const agent2 = createResult2.ok;
+        const createResult3 = await actor.createAgent(
+          "Agent 3",
+          { groq: null },
+          "llama",
+        );
+        if ("err" in createResult3) {
+          throw new Error(`Failed to create agent 3: ${createResult3.err}`);
+        }
+        const agent3 = createResult3.ok;
+
+        // Switch to user and store keys
+        actor.setIdentity(userIdentity);
+        await actor.storeApiKey(agent1, { openai: null }, "key-1");
+        await actor.storeApiKey(agent2, { groq: null }, "key-2");
+        await actor.storeApiKey(agent3, { groq: null }, "key-3");
+
+        // Retrieve and verify all keys are present
+        const result = await actor.getMyApiKeys();
+        expect("ok" in result).toBe(true);
+        const keys = "ok" in result ? result.ok : [];
+        expect(keys.length).toEqual(3);
+
+        // Verify specific keys
+        expect(
+          keys.some(
+            (k: [bigint, string]) => k[0] === agent1 && k[1] === "openai",
+          ),
+        ).toBe(true);
+        expect(
+          keys.some(
+            (k: [bigint, string]) => k[0] === agent2 && k[1] === "groq",
+          ),
+        ).toBe(true);
+        expect(
+          keys.some(
+            (k: [bigint, string]) => k[0] === agent3 && k[1] === "groq",
+          ),
+        ).toBe(true);
+      });
+    });
+
+    describe("delete_api_key", () => {
+      it("should reject anonymous users from deleting API keys", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.deleteApiKey(agentId, { openai: null });
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should return error when trying to delete API key for principal with no keys", async () => {
+        const result = await actor.deleteApiKey(agentId, { openai: null });
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "No API keys found for this principal",
+        );
+      });
+
+      it("should successfully delete an API key", async () => {
+        // Store an API key first
+        const storeResult = await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "test-key-to-delete",
+        );
+        expect("ok" in storeResult).toBe(true);
+
+        // Verify key is stored
+        const keysBeforeDelete = await actor.getMyApiKeys();
+        expect("ok" in keysBeforeDelete).toBe(true);
+        const keysBefore = "ok" in keysBeforeDelete ? keysBeforeDelete.ok : [];
+        expect(keysBefore.length).toEqual(1);
+
+        // Delete the key
+        const deleteResult = await actor.deleteApiKey(agentId, {
+          openai: null,
+        });
+        expect("ok" in deleteResult).toBe(true);
+
+        // Verify key is deleted
+        const keysAfterDelete = await actor.getMyApiKeys();
+        expect("ok" in keysAfterDelete).toBe(true);
+        const keysAfter = "ok" in keysAfterDelete ? keysAfterDelete.ok : [];
+        expect(keysAfter.length).toEqual(0);
+      });
+
+      it("should only delete the specified key, not all keys", async () => {
+        // Create multiple agents
+        actor.setIdentity(adminIdentity);
+        const agent1 = agentId;
+        const createResult2 = await actor.createAgent(
+          "Agent 2",
+          { groq: null },
+          "mixtral",
+        );
+        if ("err" in createResult2) {
+          throw new Error(`Failed to create agent 2: ${createResult2.err}`);
+        }
+        const agent2 = createResult2.ok;
+
+        // Switch to user and store keys for both agents
+        actor.setIdentity(userIdentity);
+        await actor.storeApiKey(agent1, { openai: null }, "key-1");
+        await actor.storeApiKey(agent2, { groq: null }, "key-2");
+
+        // Verify both keys exist
+        const keysBefore = await actor.getMyApiKeys();
+        expect("ok" in keysBefore).toBe(true);
+        const keysBeforeArray = "ok" in keysBefore ? keysBefore.ok : [];
+        expect(keysBeforeArray.length).toEqual(2);
+
+        // Delete only one key
+        const deleteResult = await actor.deleteApiKey(agent1, { openai: null });
+        expect("ok" in deleteResult).toBe(true);
+
+        // Verify only one key remains
+        const keysAfter = await actor.getMyApiKeys();
+        expect("ok" in keysAfter).toBe(true);
+        const keysAfterArray = "ok" in keysAfter ? keysAfter.ok : [];
+        expect(keysAfterArray.length).toEqual(1);
+        expect(keysAfterArray[0][0]).toEqual(agent2);
+        expect(keysAfterArray[0][1]).toEqual("groq");
+      });
+
+      it("should return error when deleting a non-existent key", async () => {
+        // Store an API key first
+        await actor.storeApiKey(agentId, { openai: null }, "test-key");
+
+        // Try to delete a key for a different provider (non-existent)
+        const deleteResult = await actor.deleteApiKey(agentId, { groq: null });
+        expect("err" in deleteResult).toBe(true);
+        const errorMsg = "err" in deleteResult ? deleteResult.err : "";
+        expect(errorMsg).toContain("No API key found for agent");
+        expect(errorMsg).toContain("groq");
+
+        // Original key should still exist
+        const keysResult = await actor.getMyApiKeys();
+        expect("ok" in keysResult).toBe(true);
+        const keys = "ok" in keysResult ? keysResult.ok : [];
+        expect(keys.length).toEqual(1);
+        expect(keys[0][0]).toEqual(agentId);
+        expect(keys[0][1]).toEqual("openai");
+      });
+
+      it("should not delete other users' keys", async () => {
+        // Store key as first user
+        await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "user-one-key-to-keep",
+        );
+
+        // Switch to second user
+        const secondUserIdentity = generateRandomIdentity();
+        actor.setIdentity(secondUserIdentity);
+
+        // Store key as second user
+        await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "user-two-key-to-delete",
+        );
+
+        // Delete second user's key
+        const deleteResult = await actor.deleteApiKey(agentId, {
+          openai: null,
+        });
+        expect("ok" in deleteResult).toBe(true);
+
+        // Second user should have no keys
+        const secondUserKeys = await actor.getMyApiKeys();
+        expect("ok" in secondUserKeys).toBe(true);
+        const keysSecond = "ok" in secondUserKeys ? secondUserKeys.ok : [];
+        expect(keysSecond.length).toEqual(0);
+
+        // First user's key should still exist
+        actor.setIdentity(userIdentity);
+        const firstUserKeys = await actor.getMyApiKeys();
+        expect("ok" in firstUserKeys).toBe(true);
+        const keysFirst = "ok" in firstUserKeys ? firstUserKeys.ok : [];
+        expect(keysFirst.length).toEqual(1);
+        expect(keysFirst[0][0]).toEqual(agentId);
+        expect(keysFirst[0][1]).toEqual("openai");
+      });
+    });
+  });
+
+  // ============ KEY CACHE MANAGEMENT TESTS ============
+
+  describe("Key Cache Management", () => {
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
+    let adminPrincipal: Principal;
+    let userIdentity: ReturnType<typeof generateRandomIdentity>;
+    let agentId: bigint;
+
+    beforeEach(async () => {
+      // Set up an admin
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.addAdmin(adminPrincipal);
+
+      // Create a test agent
+      const createResult = await actor.createAgent(
+        "Cache Test Agent",
+        { groq: null },
+        "mixtral",
+      );
+      if ("err" in createResult) {
+        throw new Error(`Failed to create agent: ${createResult.err}`);
+      }
+      agentId = createResult.ok;
+
+      // Set up a regular user
+      userIdentity = generateRandomIdentity();
+      actor.setIdentity(userIdentity);
+    });
+
+    describe("getKeyCacheStats", () => {
+      it("should reject non-admin users from viewing cache stats", async () => {
+        // User is not admin
+        const result = await actor.getKeyCacheStats();
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Only admins can view cache stats",
+        );
+      });
+
+      it("should return cache stats for admin", async () => {
+        actor.setIdentity(adminIdentity);
+        const result = await actor.getKeyCacheStats();
+        expect("ok" in result).toBe(true);
+        if ("ok" in result) {
+          expect(typeof result.ok.size).toBe("bigint");
+        }
+      });
+
+      it("should show increased cache size after storing API key", async () => {
+        // Check initial cache size as admin
+        actor.setIdentity(adminIdentity);
+        const initialResult = await actor.getKeyCacheStats();
+        expect("ok" in initialResult).toBe(true);
+        const initialSize = "ok" in initialResult ? initialResult.ok.size : 0n;
+
+        // Store an API key as user (this will derive and cache an encryption key)
+        actor.setIdentity(userIdentity);
+        const storeResult = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-api-key-12345",
+        );
+        expect("ok" in storeResult).toBe(true);
+
+        // Check cache size again as admin
+        actor.setIdentity(adminIdentity);
+        const afterResult = await actor.getKeyCacheStats();
+        expect("ok" in afterResult).toBe(true);
+        const afterSize = "ok" in afterResult ? afterResult.ok.size : 0n;
+
+        // Cache should have grown by 1 (for the user's encryption key)
+        expect(afterSize).toBe(initialSize + 1n);
+      });
+    });
+
+    describe("clearKeyCache", () => {
+      it("should reject non-admin users from clearing cache", async () => {
+        // User is not admin
+        const result = await actor.clearKeyCache();
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Only admins can clear the key cache",
+        );
+      });
+
+      it("should successfully clear cache as admin", async () => {
+        // First store an API key to populate cache
+        const storeResult = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-key-for-clear",
+        );
+        expect("ok" in storeResult).toBe(true);
+
+        // Clear cache as admin
+        actor.setIdentity(adminIdentity);
+        const clearResult = await actor.clearKeyCache();
+        expect("ok" in clearResult).toBe(true);
+
+        // Verify cache is empty
+        const statsResult = await actor.getKeyCacheStats();
+        expect("ok" in statsResult).toBe(true);
+        if ("ok" in statsResult) {
+          expect(statsResult.ok.size).toBe(0n);
+        }
+      });
+    });
+  });
+
+  // ============ API KEY ENCRYPTION TESTS ============
+
+  describe("API Key Encryption", () => {
+    let adminIdentity: ReturnType<typeof generateRandomIdentity>;
+    let adminPrincipal: Principal;
+    let userIdentity: ReturnType<typeof generateRandomIdentity>;
+    let user2Identity: ReturnType<typeof generateRandomIdentity>;
+    let agentId: bigint;
+
+    beforeEach(async () => {
+      // Set up an admin
+      adminIdentity = generateRandomIdentity();
+      adminPrincipal = adminIdentity.getPrincipal();
+      actor.setIdentity(adminIdentity);
+      await actor.addAdmin(adminPrincipal);
+
+      // Create a test agent
+      const createResult = await actor.createAgent(
+        "Encryption Test Agent",
+        { groq: null },
+        "mixtral",
+      );
+      if ("err" in createResult) {
+        throw new Error(`Failed to create agent: ${createResult.err}`);
+      }
+      agentId = createResult.ok;
+
+      // Set up two regular users
+      userIdentity = generateRandomIdentity();
+      user2Identity = generateRandomIdentity();
+      actor.setIdentity(userIdentity);
+    });
+
+    it("should successfully store and track encrypted API key", async () => {
+      // Store an API key
+      const storeResult = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "my-secret-api-key-xyz",
+      );
+      expect("ok" in storeResult).toBe(true);
+
+      // Verify the key is tracked
+      const keysResult = await actor.getMyApiKeys();
+      expect("ok" in keysResult).toBe(true);
+      if ("ok" in keysResult) {
+        expect(keysResult.ok.length).toBe(1);
+        expect(keysResult.ok[0][0]).toBe(agentId);
+        expect(keysResult.ok[0][1]).toBe("groq");
+      }
+    });
+
+    it("should allow updating API key with new encryption", async () => {
+      // Store first API key
+      const storeResult1 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "first-api-key",
+      );
+      expect("ok" in storeResult1).toBe(true);
+
+      // Update with new key (same agent, same provider)
+      const storeResult2 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "updated-api-key",
+      );
+      expect("ok" in storeResult2).toBe(true);
+
+      // Should still only have one key entry
+      const keysResult = await actor.getMyApiKeys();
+      expect("ok" in keysResult).toBe(true);
+      if ("ok" in keysResult) {
+        expect(keysResult.ok.length).toBe(1);
+      }
+    });
+
+    it("should isolate encrypted keys between different users", async () => {
+      // User 1 stores a key
+      actor.setIdentity(userIdentity);
+      const storeResult1 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "user1-secret-key",
+      );
+      expect("ok" in storeResult1).toBe(true);
+
+      // User 2 stores a key
+      actor.setIdentity(user2Identity);
+      const storeResult2 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "user2-secret-key",
+      );
+      expect("ok" in storeResult2).toBe(true);
+
+      // User 1 should only see their key
+      actor.setIdentity(userIdentity);
+      const user1Keys = await actor.getMyApiKeys();
+      expect("ok" in user1Keys).toBe(true);
+      if ("ok" in user1Keys) {
+        expect(user1Keys.ok.length).toBe(1);
+      }
+
+      // User 2 should only see their key
+      actor.setIdentity(user2Identity);
+      const user2Keys = await actor.getMyApiKeys();
+      expect("ok" in user2Keys).toBe(true);
+      if ("ok" in user2Keys) {
+        expect(user2Keys.ok.length).toBe(1);
+      }
+
+      // Check cache has entries for both users
+      actor.setIdentity(adminIdentity);
+      const cacheStats = await actor.getKeyCacheStats();
+      expect("ok" in cacheStats).toBe(true);
+      if ("ok" in cacheStats) {
+        expect(cacheStats.ok.size).toBe(2n); // Two different users = two cached keys
+      }
+    });
+
+    it("should re-derive encryption key after cache clear", async () => {
+      // User stores a key
+      const storeResult1 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "key-before-clear",
+      );
+      expect("ok" in storeResult1).toBe(true);
+
+      // Admin clears cache
+      actor.setIdentity(adminIdentity);
+      await actor.clearKeyCache();
+
+      // User stores another key (should re-derive encryption key)
+      actor.setIdentity(userIdentity);
+
+      // User updates a key
+      const storeResult2 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "key-after-clear",
+      );
+      expect("ok" in storeResult2).toBe(true);
+
+      // User should still be able to list their keys
+      const keysResult = await actor.getMyApiKeys();
+      expect("ok" in keysResult).toBe(true);
+      if ("ok" in keysResult) {
+        expect(keysResult.ok.length).toBe(1);
+      }
+    });
+  });
+});

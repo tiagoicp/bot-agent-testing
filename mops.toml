@@ -1,6 +1,10 @@
 [dependencies]
 core = "2.0.0"
 llm = "2.1.0"
+sha2 = "0.1.10"
 
 [toolchain]
 moc = "1.0.0"
+
+[dev-dependencies]
+test = "2.1.2"
