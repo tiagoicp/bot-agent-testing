@@ -42,8 +42,9 @@ persistent actor {
     );
   };
 
-  // Set up initial timer on first install (will run after 30 days)
-  ignore Timer.setTimer<system>(
+  // This logic runs only on the VERY FIRST installation (init)
+  // Subsequent upgrades will wipe this timer and it won't be replaced
+  let _initTimer = Timer.setTimer<system>(
     #nanoseconds(Constants.THIRTY_DAYS_NS),
     clearKeyCacheTimer,
   );
@@ -53,14 +54,8 @@ persistent actor {
     let now = Time.now();
     let elapsed = now - lastClearTimestamp;
 
-    if (elapsed >= Constants.THIRTY_DAYS_NS) {
-      // If 30 days already passed, run immediately
-      ignore Timer.setTimer<system>(#nanoseconds(0), clearKeyCacheTimer);
-    } else {
-      // Schedule the "leftover" time
-      let remaining = Constants.THIRTY_DAYS_NS - elapsed;
-      ignore Timer.setTimer<system>(#nanoseconds(Int.abs(remaining)), clearKeyCacheTimer);
-    };
+    let remaining = Constants.THIRTY_DAYS_NS - elapsed;
+    ignore Timer.setTimer<system>(#nanoseconds(Int.abs(remaining)), clearKeyCacheTimer);
   };
 
   // ============================================
