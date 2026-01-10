@@ -1104,29 +1104,21 @@ describe("Bot Agent Backend", () => {
 
       // User stores another key (should re-derive encryption key)
       actor.setIdentity(userIdentity);
-      const createResult2 = await actor.createAgent(
-        "Agent 2",
-        { groq: null },
-        "model2",
-      );
-      if ("ok" in createResult2) {
-        // Switch back to user for storing
-        actor.setIdentity(adminIdentity);
-        await actor.createAgent("Agent 2", { groq: null }, "model2");
 
-        actor.setIdentity(userIdentity);
-        // Store will re-derive encryption key from Schnorr
-        const storeResult2 = await actor.storeApiKey(
-          agentId,
-          { groq: null },
-          "key-after-clear",
-        );
-        expect("ok" in storeResult2).toBe(true);
-      }
+      // User updates a key
+      const storeResult2 = await actor.storeApiKey(
+        agentId,
+        { groq: null },
+        "key-after-clear",
+      );
+      expect("ok" in storeResult2).toBe(true);
 
       // User should still be able to list their keys
       const keysResult = await actor.getMyApiKeys();
       expect("ok" in keysResult).toBe(true);
+      if ("ok" in keysResult) {
+        expect(keysResult.ok.length).toBe(1);
+      }
     });
   });
 });

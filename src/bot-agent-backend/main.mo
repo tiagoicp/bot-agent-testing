@@ -28,9 +28,11 @@ persistent actor {
   // Timers Setup
   // ============================================
 
+  // Set up recurring timers
+  // All timers are cleared when a canister is upgraded
+  // Therefore time
+
   // Clear Cache Timer
-  // Set up recurring timer for monthly cache clearing
-  // Timer is re-initialized on canister upgrade
   ignore Timer.recurringTimer<system>(
     #nanoseconds(Constants.THIRTY_DAYS_NS),
     func() : async () {
