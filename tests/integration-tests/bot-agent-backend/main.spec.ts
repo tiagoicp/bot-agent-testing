@@ -74,6 +74,60 @@ describe("Bot Agent Backend", () => {
     await pic.tearDown();
   });
 
+  // ============ TIMER MANAGEMENT TESTS ============
+
+  describe("Timer Management", () => {
+    describe("Cache clearing timer", () => {
+      it("should clear the key cache after 30 days", async () => {
+        const adminIdentity = generateRandomIdentity();
+        const userIdentity = generateRandomIdentity();
+
+        // Set up admin (first caller becomes admin automatically)
+        actor.setIdentity(adminIdentity);
+        await actor.addAdmin(generateTestPrincipal(999));
+
+        // Create an agent as admin
+        const createResult = await actor.createAgent(
+          "Timer Test Agent",
+          { groq: null },
+          "llama-3.3-70b-versatile",
+        );
+        expect("ok" in createResult).toBe(true);
+        const agentId = "ok" in createResult ? createResult.ok : 0n;
+
+        // Store an API key as user (this will derive and cache an encryption key)
+        actor.setIdentity(userIdentity);
+        const storeResult = await actor.storeApiKey(
+          agentId,
+          { groq: null },
+          "test-api-key-for-timer",
+        );
+        expect("ok" in storeResult).toBe(true);
+
+        // Verify cache now has 1 entry
+        actor.setIdentity(adminIdentity);
+        const afterStoreStats = await actor.getKeyCacheStats();
+        expect("ok" in afterStoreStats).toBe(true);
+        const afterStoreSize =
+          "ok" in afterStoreStats ? afterStoreStats.ok.size : 0n;
+        expect(afterStoreSize).toBe(1n);
+
+        // Advance time by 30 days (2_592_000_000 milliseconds = 30 days)
+        const thirtyDaysMs = 2_592_000_000;
+        await pic.advanceTime(thirtyDaysMs);
+
+        // Tick to trigger timers
+        await pic.tick();
+
+        // Check cache size - should be cleared (0)
+        const finalStats = await actor.getKeyCacheStats();
+        expect("ok" in finalStats).toBe(true);
+        const finalSize = "ok" in finalStats ? finalStats.ok.size : 999n;
+        expect(finalSize).toBe(0n);
+      });
+    });
+  });
+
   // ============ ADMIN MANAGEMENT TESTS ============
 
   describe("Admin Management", () => {

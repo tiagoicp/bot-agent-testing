@@ -4,6 +4,7 @@ import Time "mo:core/Time";
 import List "mo:core/List";
 import Text "mo:core/Text";
 import Timer "mo:core/Timer";
+import Int "mo:core/Int";
 import Types "./types";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
@@ -23,22 +24,44 @@ persistent actor {
   var conversations = Map.empty<ConversationService.ConversationKey, List.List<ConversationService.Message>>();
   var apiKeys = Map.empty<Principal, Map.Map<(Nat, Text), ApiKeysService.EncryptedApiKey>>(); // Encrypted API keys
   transient var keyCache : KeyDerivationService.KeyCache = KeyDerivationService.clearCache(); // Cache of derived encryption keys
+  var lastClearTimestamp : Int = Time.now(); // Track last time cache was cleared
 
   // ============================================
-  // Timers Setup
+  // Timer Management
   // ============================================
 
-  // Set up recurring timers
-  // All timers are cleared when a canister is upgraded
-  // Therefore time
+  // Clear Cache Timer function
+  private func clearKeyCacheTimer() : async () {
+    keyCache := KeyDerivationService.clearCache();
+    lastClearTimestamp := Time.now();
 
-  // Clear Cache Timer
-  ignore Timer.recurringTimer<system>(
+    // Start the regular recurring timer for future intervals
+    ignore Timer.recurringTimer<system>(
+      #nanoseconds(Constants.THIRTY_DAYS_NS),
+      clearKeyCacheTimer,
+    );
+  };
+
+  // Set up initial timer on first install (will run after 30 days)
+  ignore Timer.setTimer<system>(
     #nanoseconds(Constants.THIRTY_DAYS_NS),
-    func() : async () {
-      keyCache := KeyDerivationService.clearCache();
-    },
+    clearKeyCacheTimer,
   );
+
+  // System hook called after every upgrade
+  system func postupgrade() {
+    let now = Time.now();
+    let elapsed = now - lastClearTimestamp;
+
+    if (elapsed >= Constants.THIRTY_DAYS_NS) {
+      // If 30 days already passed, run immediately
+      ignore Timer.setTimer<system>(#nanoseconds(0), clearKeyCacheTimer);
+    } else {
+      // Schedule the "leftover" time
+      let remaining = Constants.THIRTY_DAYS_NS - elapsed;
+      ignore Timer.setTimer<system>(#nanoseconds(Int.abs(remaining)), clearKeyCacheTimer);
+    };
+  };
 
   // ============================================
   // Admin Management
