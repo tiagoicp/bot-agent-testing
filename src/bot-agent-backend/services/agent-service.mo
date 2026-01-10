@@ -2,23 +2,18 @@ import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 import Result "mo:core/Result";
+import Types "../types";
 
 module {
-  public type Provider = {
-    #openai;
-    #llmcanister;
-    #groq;
-  };
-
   public type Agent = {
     id : Nat;
     name : Text;
-    provider : Provider;
+    provider : Types.LlmProvider;
     model : Text;
   };
 
   // Create a new agent
-  public func createAgent(name : Text, provider : Provider, model : Text, agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : (Result.Result<Nat, Text>, Nat) {
+  public func createAgent(name : Text, provider : Types.LlmProvider, model : Text, agents : Map.Map<Nat, Agent>, nextAgentId : Nat) : (Result.Result<Nat, Text>, Nat) {
     if (name == "") {
       (#err("Agent name cannot be empty"), nextAgentId);
     } else {
@@ -40,7 +35,7 @@ module {
   };
 
   // Update an agent
-  public func updateAgent(id : Nat, newName : ?Text, newProvider : ?Provider, newModel : ?Text, agents : Map.Map<Nat, Agent>) : Result.Result<Bool, Text> {
+  public func updateAgent(id : Nat, newName : ?Text, newProvider : ?Types.LlmProvider, newModel : ?Text, agents : Map.Map<Nat, Agent>) : Result.Result<Bool, Text> {
     switch (Map.get(agents, Nat.compare, id)) {
       case (null) {
         #err("Agent not found");

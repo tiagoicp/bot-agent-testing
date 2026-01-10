@@ -7,4 +7,11 @@ module {
     #staging;
     #production;
   };
+
+  /// LLM Provider
+  public type LlmProvider = {
+    #openai;
+    #llmcanister;
+    #groq;
+  };
 };

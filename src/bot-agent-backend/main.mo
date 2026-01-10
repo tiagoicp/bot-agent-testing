@@ -4,6 +4,7 @@ import Time "mo:core/Time";
 import List "mo:core/List";
 import Text "mo:core/Text";
 import Timer "mo:core/Timer";
+import Types "./types";
 import AdminService "./services/admin-service";
 import AgentService "./services/agent-service";
 import ConversationService "./services/conversation-service";
@@ -75,7 +76,7 @@ persistent actor {
   // ============================================
 
   // Create a new agent
-  public shared ({ caller }) func createAgent(name : Text, provider : AgentService.Provider, model : Text) : async {
+  public shared ({ caller }) func createAgent(name : Text, provider : Types.LlmProvider, model : Text) : async {
     #ok : Nat;
     #err : Text;
   } {
@@ -93,7 +94,7 @@ persistent actor {
   };
 
   // Update an agent
-  public shared ({ caller }) func updateAgent(id : Nat, newName : ?Text, newProvider : ?AgentService.Provider, newModel : ?Text) : async {
+  public shared ({ caller }) func updateAgent(id : Nat, newName : ?Text, newProvider : ?Types.LlmProvider, newModel : ?Text) : async {
     #ok : Bool;
     #err : Text;
   } {
@@ -190,7 +191,7 @@ persistent actor {
   // ============================================
 
   // Store an API key for an agent (encrypted at rest)
-  public shared ({ caller }) func storeApiKey(agentId : Nat, provider : ApiKeysService.LLMProvider, apiKey : Text) : async {
+  public shared ({ caller }) func storeApiKey(agentId : Nat, provider : Types.LlmProvider, apiKey : Text) : async {
     #ok : ();
     #err : Text;
   } {
@@ -225,6 +226,17 @@ persistent actor {
       return #err("Please login before calling this function");
     };
     ApiKeysService.getMyApiKeys(apiKeys, caller);
+  };
+
+  // Delete an API key for a specific agent and provider
+  public shared ({ caller }) func deleteApiKey(agentId : Nat, provider : Types.LlmProvider) : async {
+    #ok : ();
+    #err : Text;
+  } {
+    if (Principal.isAnonymous(caller)) {
+      return #err("Please login before calling this function");
+    };
+    ApiKeysService.deleteApiKey(apiKeys, caller, agentId, provider);
   };
 
   // ============================================

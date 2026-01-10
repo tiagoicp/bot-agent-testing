@@ -553,7 +553,7 @@ describe("Bot Agent Backend", () => {
 
         const result = await actor.storeApiKey(
           agentId,
-          { groq: null },
+          { openai: null },
           "test-key-123",
         );
         expect("err" in result).toBe(true);
@@ -565,7 +565,7 @@ describe("Bot Agent Backend", () => {
       it("should reject storing API key for non-existent agent", async () => {
         const result = await actor.storeApiKey(
           999n,
-          { groq: null },
+          { openai: null },
           "test-key-123",
         );
         expect("err" in result).toBe(true);
@@ -573,13 +573,17 @@ describe("Bot Agent Backend", () => {
       });
 
       it("should reject storing empty or whitespace only API key", async () => {
-        const result = await actor.storeApiKey(agentId, { groq: null }, "");
+        const result = await actor.storeApiKey(agentId, { openai: null }, "");
         expect("err" in result).toBe(true);
         expect("err" in result ? result.err : "").toEqual(
           "API key cannot be empty",
         );
 
-        const result2 = await actor.storeApiKey(agentId, { groq: null }, "   ");
+        const result2 = await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "   ",
+        );
         expect("err" in result2).toBe(true);
         expect("err" in result2 ? result2.err : "").toEqual(
           "API key cannot be empty",
@@ -622,7 +626,7 @@ describe("Bot Agent Backend", () => {
 
       it("should return only caller's API keys, not other users' keys", async () => {
         // Store key as first user
-        await actor.storeApiKey(agentId, { groq: null }, "user-one-key");
+        await actor.storeApiKey(agentId, { openai: null }, "user-one-key");
 
         // Switch to second user
         const secondUserIdentity = generateRandomIdentity();
@@ -635,7 +639,7 @@ describe("Bot Agent Backend", () => {
         expect(keysBefore.length).toEqual(0);
 
         // Store a key as second user
-        await actor.storeApiKey(agentId, { groq: null }, "user-two-key");
+        await actor.storeApiKey(agentId, { openai: null }, "user-two-key");
 
         // Now second user should have exactly 1 key
         const resultAfter = await actor.getMyApiKeys();
@@ -676,7 +680,7 @@ describe("Bot Agent Backend", () => {
 
         // Switch to user and store keys
         actor.setIdentity(userIdentity);
-        await actor.storeApiKey(agent1, { groq: null }, "key-1");
+        await actor.storeApiKey(agent1, { openai: null }, "key-1");
         await actor.storeApiKey(agent2, { groq: null }, "key-2");
         await actor.storeApiKey(agent3, { groq: null }, "key-3");
 
@@ -689,7 +693,7 @@ describe("Bot Agent Backend", () => {
         // Verify specific keys
         expect(
           keys.some(
-            (k: [bigint, string]) => k[0] === agent1 && k[1] === "groq",
+            (k: [bigint, string]) => k[0] === agent1 && k[1] === "openai",
           ),
         ).toBe(true);
         expect(
@@ -702,6 +706,153 @@ describe("Bot Agent Backend", () => {
             (k: [bigint, string]) => k[0] === agent3 && k[1] === "groq",
           ),
         ).toBe(true);
+      });
+    });
+
+    describe("delete_api_key", () => {
+      it("should reject anonymous users from deleting API keys", async () => {
+        actor.setPrincipal(Principal.anonymous());
+
+        const result = await actor.deleteApiKey(agentId, { openai: null });
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "Please login before calling this function",
+        );
+      });
+
+      it("should return error when trying to delete API key for principal with no keys", async () => {
+        const result = await actor.deleteApiKey(agentId, { openai: null });
+        expect("err" in result).toBe(true);
+        expect("err" in result ? result.err : "").toEqual(
+          "No API keys found for this principal",
+        );
+      });
+
+      it("should successfully delete an API key", async () => {
+        // Store an API key first
+        const storeResult = await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "test-key-to-delete",
+        );
+        expect("ok" in storeResult).toBe(true);
+
+        // Verify key is stored
+        const keysBeforeDelete = await actor.getMyApiKeys();
+        expect("ok" in keysBeforeDelete).toBe(true);
+        const keysBefore = "ok" in keysBeforeDelete ? keysBeforeDelete.ok : [];
+        expect(keysBefore.length).toEqual(1);
+
+        // Delete the key
+        const deleteResult = await actor.deleteApiKey(agentId, {
+          openai: null,
+        });
+        expect("ok" in deleteResult).toBe(true);
+
+        // Verify key is deleted
+        const keysAfterDelete = await actor.getMyApiKeys();
+        expect("ok" in keysAfterDelete).toBe(true);
+        const keysAfter = "ok" in keysAfterDelete ? keysAfterDelete.ok : [];
+        expect(keysAfter.length).toEqual(0);
+      });
+
+      it("should only delete the specified key, not all keys", async () => {
+        // Create multiple agents
+        actor.setIdentity(adminIdentity);
+        const agent1 = agentId;
+        const createResult2 = await actor.createAgent(
+          "Agent 2",
+          { groq: null },
+          "mixtral",
+        );
+        if ("err" in createResult2) {
+          throw new Error(`Failed to create agent 2: ${createResult2.err}`);
+        }
+        const agent2 = createResult2.ok;
+
+        // Switch to user and store keys for both agents
+        actor.setIdentity(userIdentity);
+        await actor.storeApiKey(agent1, { openai: null }, "key-1");
+        await actor.storeApiKey(agent2, { groq: null }, "key-2");
+
+        // Verify both keys exist
+        const keysBefore = await actor.getMyApiKeys();
+        expect("ok" in keysBefore).toBe(true);
+        const keysBeforeArray = "ok" in keysBefore ? keysBefore.ok : [];
+        expect(keysBeforeArray.length).toEqual(2);
+
+        // Delete only one key
+        const deleteResult = await actor.deleteApiKey(agent1, { openai: null });
+        expect("ok" in deleteResult).toBe(true);
+
+        // Verify only one key remains
+        const keysAfter = await actor.getMyApiKeys();
+        expect("ok" in keysAfter).toBe(true);
+        const keysAfterArray = "ok" in keysAfter ? keysAfter.ok : [];
+        expect(keysAfterArray.length).toEqual(1);
+        expect(keysAfterArray[0][0]).toEqual(agent2);
+        expect(keysAfterArray[0][1]).toEqual("groq");
+      });
+
+      it("should return error when deleting a non-existent key", async () => {
+        // Store an API key first
+        await actor.storeApiKey(agentId, { openai: null }, "test-key");
+
+        // Try to delete a key for a different provider (non-existent)
+        const deleteResult = await actor.deleteApiKey(agentId, { groq: null });
+        expect("err" in deleteResult).toBe(true);
+        const errorMsg = "err" in deleteResult ? deleteResult.err : "";
+        expect(errorMsg).toContain("No API key found for agent");
+        expect(errorMsg).toContain("groq");
+
+        // Original key should still exist
+        const keysResult = await actor.getMyApiKeys();
+        expect("ok" in keysResult).toBe(true);
+        const keys = "ok" in keysResult ? keysResult.ok : [];
+        expect(keys.length).toEqual(1);
+        expect(keys[0][0]).toEqual(agentId);
+        expect(keys[0][1]).toEqual("openai");
+      });
+
+      it("should not delete other users' keys", async () => {
+        // Store key as first user
+        await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "user-one-key-to-keep",
+        );
+
+        // Switch to second user
+        const secondUserIdentity = generateRandomIdentity();
+        actor.setIdentity(secondUserIdentity);
+
+        // Store key as second user
+        await actor.storeApiKey(
+          agentId,
+          { openai: null },
+          "user-two-key-to-delete",
+        );
+
+        // Delete second user's key
+        const deleteResult = await actor.deleteApiKey(agentId, {
+          openai: null,
+        });
+        expect("ok" in deleteResult).toBe(true);
+
+        // Second user should have no keys
+        const secondUserKeys = await actor.getMyApiKeys();
+        expect("ok" in secondUserKeys).toBe(true);
+        const keysSecond = "ok" in secondUserKeys ? secondUserKeys.ok : [];
+        expect(keysSecond.length).toEqual(0);
+
+        // First user's key should still exist
+        actor.setIdentity(userIdentity);
+        const firstUserKeys = await actor.getMyApiKeys();
+        expect("ok" in firstUserKeys).toBe(true);
+        const keysFirst = "ok" in firstUserKeys ? firstUserKeys.ok : [];
+        expect(keysFirst.length).toEqual(1);
+        expect(keysFirst[0][0]).toEqual(agentId);
+        expect(keysFirst[0][1]).toEqual("openai");
       });
     });
   });

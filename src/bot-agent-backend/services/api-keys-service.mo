@@ -6,13 +6,10 @@ import Nat "mo:core/Nat";
 import Result "mo:core/Result";
 import Iter "mo:core/Iter";
 import Blob "mo:core/Blob";
+import Types "../types";
 import EncryptionService "./encryption-service";
 
 module {
-  public type LLMProvider = {
-    #groq;
-  };
-
   /// Type alias for encrypted API key storage
   /// The Blob contains: [nonce (8 bytes)] [ciphertext]
   public type EncryptedApiKey = Blob;
@@ -29,6 +26,15 @@ module {
     };
   };
 
+  /// Convert LlmProvider variant to string representation
+  private func providerToString(provider : Types.LlmProvider) : Text {
+    switch (provider) {
+      case (#openai) { "openai" };
+      case (#llmcanister) { "llmcanister" };
+      case (#groq) { "groq" };
+    };
+  };
+
   /// Get and decrypt API key for a specific caller, agent, and provider
   ///
   /// @param apiKeys - The encrypted API keys map
@@ -42,11 +48,9 @@ module {
     encryptionKey : [Nat8],
     principal : Principal,
     agentId : Nat,
-    provider : LLMProvider,
+    provider : Types.LlmProvider,
   ) : ?Text {
-    let providerName = switch (provider) {
-      case (#groq) { "groq" };
-    };
+    let providerName = providerToString(provider);
     let key = (agentId, providerName);
 
     switch (Map.get(apiKeys, Principal.compare, principal)) {
@@ -81,12 +85,10 @@ module {
     encryptionKey : [Nat8],
     principal : Principal,
     agentId : Nat,
-    provider : LLMProvider,
+    provider : Types.LlmProvider,
     apiKey : Text,
   ) : Result.Result<(), Text> {
-    let providerName = switch (provider) {
-      case (#groq) { "groq" };
-    };
+    let providerName = providerToString(provider);
     let key = (agentId, providerName);
 
     // Convert API key to bytes and encrypt (nonce generated internally)
@@ -144,11 +146,9 @@ module {
     apiKeys : ApiKeysMap,
     principal : Principal,
     agentId : Nat,
-    provider : LLMProvider,
+    provider : Types.LlmProvider,
   ) : Result.Result<(), Text> {
-    let providerName = switch (provider) {
-      case (#groq) { "groq" };
-    };
+    let providerName = providerToString(provider);
     let key = (agentId, providerName);
 
     switch (Map.get(apiKeys, Principal.compare, principal)) {
@@ -156,22 +156,18 @@ module {
         #err("No API keys found for this principal");
       };
       case (?callerKeyMap) {
-        ignore Map.delete(callerKeyMap, compareNatTextTuple, key);
-        Map.add(apiKeys, Principal.compare, principal, callerKeyMap);
-        #ok(());
+        // Check if the key exists before deleting
+        switch (Map.get(callerKeyMap, compareNatTextTuple, key)) {
+          case (null) {
+            #err("No API key found for agent " # debug_show (agentId) # " with provider " # providerName);
+          };
+          case (?_) {
+            ignore Map.delete(callerKeyMap, compareNatTextTuple, key);
+            Map.add(apiKeys, Principal.compare, principal, callerKeyMap);
+            #ok(());
+          };
+        };
       };
     };
-  };
-
-  /// Delete all API keys for a Principal
-  /// Useful when a user wants to remove all their data
-  ///
-  /// @param apiKeys - The encrypted API keys map
-  /// @param principal - The Principal whose keys to delete
-  public func deleteAllApiKeysForPrincipal(
-    apiKeys : ApiKeysMap,
-    principal : Principal,
-  ) : () {
-    ignore Map.delete(apiKeys, Principal.compare, principal);
   };
 };
