@@ -66,7 +66,6 @@ module {
     let chatMessages = messagesToChat(initialMessages);
 
     let toolResources : ToolTypes.ToolResources = {
-      openRouterApiKey = ?apiKey;
       workspaceId = ?agent.ownedBy;
       resolveSlackBotToken = ?(resolveSlackBotToken);
       userAuthContext;

@@ -60,9 +60,6 @@ module {
     // Current workspace context
     workspaceId : ?Nat;
 
-    // OpenRouter API key - required for web search and other OpenRouter-powered tools
-    openRouterApiKey : ?Text;
-
     // Slack bot token resolver — returns the decrypted Slack bot token for the org.
     // Takes an operation name for audit logging.
     // Only admin-category agents receive a resolver closure; all others get null.

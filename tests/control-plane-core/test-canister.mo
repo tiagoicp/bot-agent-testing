@@ -323,14 +323,6 @@ shared ({ caller = parent }) persistent actor class TestCanister() = self {
     await HttpWrapper.post(url, headers, body);
   };
 
-  public shared ({ caller }) func openRouterChat(apiKey : Text, userMessage : Text, model : Text) : async {
-    #ok : Text;
-    #err : Text;
-  } {
-    assert caller == parent;
-    await OpenRouterWrapper.chat(apiKey, userMessage, model);
-  };
-
   public shared ({ caller }) func openRouterReason(
     apiKey : Text,
     input : [OpenRouterWrapper.ResponseInputMessage],
@@ -342,18 +334,6 @@ shared ({ caller = parent }) persistent actor class TestCanister() = self {
   ) : async OpenRouterWrapper.ReasonWithToolsResult {
     assert caller == parent;
     await OpenRouterWrapper.reason(apiKey, input, model, trackId, instructions, temperature, tools);
-  };
-
-  public shared ({ caller }) func openRouterUseBuiltInTool(
-    apiKey : Text,
-    userMessage : Text,
-    tool : OpenRouterWrapper.BuiltInTool,
-  ) : async {
-    #ok : OpenRouterWrapper.CompoundChatCompletionResponse;
-    #err : Text;
-  } {
-    assert caller == parent;
-    await OpenRouterWrapper.useBuiltInTool(apiKey, userMessage, tool);
   };
 
   // ============================================
@@ -1162,13 +1142,11 @@ shared ({ caller = parent }) persistent actor class TestCanister() = self {
   // ============================================
 
   public shared ({ caller }) func testToolExecutorExecute(
-    apiKey : Text,
     toolName : Text,
     args : Text,
   ) : async [ToolTypes.ToolResult] {
     assert caller == parent;
     let resources : ToolTypes.ToolResources = {
-      openRouterApiKey = ?apiKey;
       workspaceId = null;
       resolveSlackBotToken = null;
       userAuthContext = null;

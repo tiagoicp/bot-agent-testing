@@ -5,7 +5,6 @@ import OpenRouterWrapper "../../wrappers/openrouter-wrapper";
 import ToolTypes "./tool-types";
 import SlackAuthMiddleware "../../middleware/slack-auth-middleware";
 import AgentHelpers "../helpers";
-import WebSearchHandler "./handlers/web-search-handler";
 import StoreSecretHandler "./handlers/secrets/store-secret-handler";
 import GetWorkspaceSecretsHandler "./handlers/secrets/get-workspace-secrets-handler";
 import DeleteSecretHandler "./handlers/secrets/delete-secret-handler";
@@ -43,16 +42,6 @@ module {
   /// Get all registered function tools available for the given resources
   public func getAll(resources : ToolTypes.ToolResources) : [FunctionTool] {
     let tools = List.empty<FunctionTool>();
-
-    // ==========================================
-    // WEB SEARCH TOOL - requires openRouterApiKey
-    // ==========================================
-    switch (resources.openRouterApiKey) {
-      case (?apiKey) {
-        List.add(tools, webSearchTool(apiKey));
-      };
-      case (null) {};
-    };
 
     // ==========================================
     // SECRETS MANAGEMENT TOOLS - require secrets resource + userAuthContext + workspaceId
@@ -112,23 +101,6 @@ module {
         t.definition.function.name == name;
       },
     );
-  };
-
-  /// Web search tool - requires openRouterApiKey
-  private func webSearchTool(apiKey : Text) : FunctionTool {
-    {
-      definition = {
-        tool_type = "function";
-        function = {
-          name = "web_search";
-          description = ?"Performs a web search using the OpenRouter web search plugin. Returns AI-analyzed search results. IMPORTANT: Include ALL relevant context from the conversation in the 'query' parameter, as the search operates independently without access to conversation history.";
-          parameters = ?"{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"The search query with full context. Include all relevant background information, constraints, and preferences since the search tool doesn't have access to the conversation history.\"}},\"required\":[\"query\"]}";
-        };
-      };
-      handler = func(args : Text) : async ToolTypes.ToolCallOutcome {
-        await WebSearchHandler.handle(apiKey, args);
-      };
-    };
   };
 
   // ============================================
