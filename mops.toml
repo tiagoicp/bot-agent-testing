@@ -5,6 +5,7 @@ sha2 = "0.1.14"
 json = "1.4.0"
 ic-certification = "1.1.0"
 ic = "4.0.0"
+compression = "0.3.0"
 
 [toolchain]
 moc = "1.7.0"

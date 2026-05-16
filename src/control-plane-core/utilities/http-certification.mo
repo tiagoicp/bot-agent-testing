@@ -21,6 +21,7 @@ import Text "mo:core/Text";
 
 import MerkleTree "mo:ic-certification/MerkleTree";
 import SHA256 "mo:sha2/Sha256";
+import Base64 "./base64";
 
 module {
 
@@ -309,111 +310,10 @@ module {
   };
 
   // ============================================
-  // Internal — Base64 encoder (standard, with padding)
+  // Internal — Base64 encoder (delegates to utilities/base64)
   // ============================================
 
-  let BASE64_ALPHABET : [Char] = [
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
-    'a',
-    'b',
-    'c',
-    'd',
-    'e',
-    'f',
-    'g',
-    'h',
-    'i',
-    'j',
-    'k',
-    'l',
-    'm',
-    'n',
-    'o',
-    'p',
-    'q',
-    'r',
-    's',
-    't',
-    'u',
-    'v',
-    'w',
-    'x',
-    'y',
-    'z',
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    '+',
-    '/',
-  ];
-
-  func base64(data : Blob) : Text {
-    let bytes = Blob.toArray(data);
-    let len = bytes.size();
-    if (len == 0) return "";
-
-    let outputLen = ((len + 2) / 3) * 4;
-
-    let chars = Array.tabulate<Char>(
-      outputLen,
-      func(ci : Nat) : Char {
-        let group = ci / 4;
-        let pos = ci % 4;
-        let bi = group * 3;
-
-        // Padding positions
-        if (pos == 2 and bi + 1 >= len) return '=';
-        if (pos == 3 and bi + 2 >= len) return '=';
-
-        let b0 = Nat8.toNat(bytes[bi]);
-        let b1 = if (bi + 1 < len) Nat8.toNat(bytes[bi + 1]) else 0;
-        let b2 = if (bi + 2 < len) Nat8.toNat(bytes[bi + 2]) else 0;
-
-        let index = switch pos {
-          case 0 { b0 / 4 };
-          case 1 { (b0 % 4) * 16 + b1 / 16 };
-          case 2 { (b1 % 16) * 4 + b2 / 64 };
-          case _ { b2 % 64 };
-        };
-
-        BASE64_ALPHABET[index];
-      },
-    );
-
-    Text.fromIter(chars.vals());
-  };
+  func base64(data : Blob) : Text { Base64.encodeBlob(data) };
 
   // ============================================
   // Internal — Helpers

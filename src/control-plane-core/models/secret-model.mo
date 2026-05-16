@@ -90,6 +90,7 @@ module {
       case (#openRouterApiKey) { "openRouterApiKey" };
       case (#slackBotToken) { "slackBotToken" };
       case (#slackSigningSecret) { "slackSigningSecret" };
+      case (#relaySharedSecret) { "relaySharedSecret" };
       case (#custom(name)) { "custom:" # name };
     };
   };

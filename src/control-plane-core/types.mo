@@ -17,6 +17,7 @@ module {
     #openRouterApiKey;
     #slackBotToken;
     #slackSigningSecret;
+    #relaySharedSecret; // HMAC shared secret for Cloudflare Worker relay webhook verification
     #custom : Text; // admin-defined key name; stored as "custom:<name>" in the map
   };
 

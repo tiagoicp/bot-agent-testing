@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "mopsTomlDepsHash": "56455c02e2ca9777410fab6a72cdc1f41876d1c8b77a286d1d67e3edd26f621d",
+  "mopsTomlDepsHash": "c04512783a456cb765f89cdb53a6e1cf3fd507596fb829ee397a38f4458de903",
   "deps": {
     "core": "2.5.0",
     "llm": "2.1.0",
@@ -16,6 +16,12 @@
     "xtended-numbers@2": "2.1.0",
     "buffer@0": "0.1.0",
     "ic": "4.0.0",
+    "compression": "0.3.0",
+    "itertools@0": "0.2.2",
+    "circular-buffer@0": "0.0.1",
+    "bitbuffer@1": "1.2.0",
+    "buffer-deque": "0.0.1",
+    "buffer-deque@0": "0.1.0",
     "test": "2.1.2"
   },
   "hashes": {
@@ -328,6 +334,82 @@
       "ic@4.0.0/src/lib.mo": "9d9ec84a85eb25d191c1cae99cb841d9b6e0cf0f9bc27c3f3805ac9673d7bef1",
       "ic@4.0.0/LICENSE": "ec415b57f8143746b567c94bfad243f5342f3edf110c94641a1a60e02722db55",
       "ic@4.0.0/src/Types.mo": "373c3a18e072058aecaaec99385a08f95746c7e86cc9694f9f23caa982c2ad6c"
+    },
+    "compression@0.3.0": {
+      "compression@0.3.0/example/compress-images.mo": "4e0104a592bce83ef5af9b6e269d62008b7f1e1040033452466f9f9176d0bc6a",
+      "compression@0.3.0/src/BitReader.mo": "974ca973b09eb1954de9fc84bbe280eca83ff059c1330d8debb11bcbc933f6ff",
+      "compression@0.3.0/example/compress.mo": "2251c000accea593cc575521dd3d9c04042776fde8a530baacafd55239cb9c41",
+      "compression@0.3.0/src/utils.mo": "65275f8da7656f85bd95e1c1c451f20ba4955057182c1a108e4569684c6e52dc",
+      "compression@0.3.0/LICENSE": "722f3f4279baf4ab992c14fdbb619e088f85af40b24881a8851de77e4ab084f6",
+      "compression@0.3.0/mops.toml": "61fa6e2ef22080bb0cf27acb7374c7c4e20063bde1881181d7427d1cf7c11ecb",
+      "compression@0.3.0/README.md": "5122b2c0b684b21f3f3bb0d6ff900f27c67c24c660ad7e381e8b0e268d5cb11b",
+      "compression@0.3.0/src/Deflate/Block.mo": "42731fe38d1b69950b8f4e9951c6af0133e915002e422e189781beb4b4ff2a25",
+      "compression@0.3.0/src/Deflate/Symbol.mo": "ac8e7df4d7352c83742811eb0f4b70669891538c0a4f3886312278e1f048ffd9",
+      "compression@0.3.0/src/Gzip/Header.mo": "a2a8a4f72d34d5de5874f74c3f5a5d2a07f2d9d95e8f1b465b22f8b0eed2a6d8",
+      "compression@0.3.0/src/Deflate/Encoder.mo": "8f6f5c5850837c5e5084448570dd1149882dda9f06d8995ab6baa46982692621",
+      "compression@0.3.0/src/Deflate/Decoder.mo": "8d507991ea3ab645d1c79aa1687cfa349644c9479db24ff5f8c38332cc25dce4",
+      "compression@0.3.0/src/Gzip/Encoder.mo": "7f0a385ee3114834d9ba518b27e6259813a8eebb991e5ee6a53c6dd56ac6e6d0",
+      "compression@0.3.0/src/Deflate/lib.mo": "6847479aaee7823898daa399da1544daa1a8e56ab9af564a0a3a6d8e5a1c39a3",
+      "compression@0.3.0/src/Gzip/Decoder.mo": "9d9ce6fc1cc5a7097cba7c63699a0d23c0e3721e3acdcac2cc52505af8939752",
+      "compression@0.3.0/src/Gzip/lib.mo": "8bf46c0e7f982f7b2065caef70003da287f65f233793bb514b92b07fb212dfa2",
+      "compression@0.3.0/src/Huffman/Encoder.mo": "490998135f1231da3d143d67d00fcd8ba18afad501ca7419cc21e91ae1d4553e",
+      "compression@0.3.0/src/Huffman/Common.mo": "1fe713b3071907e0fb85786add2de46f3b8a3384583c9b26cbf98d16500f1c7e",
+      "compression@0.3.0/src/LZSS/Common.mo": "9a244e31b828d182b27f52e6119690fca26369565529d1b12241997003239e9f",
+      "compression@0.3.0/src/LZSS/lib.mo": "fd3d873afb6ee4d212246c8f17122e5b33eed271ea232e9d22a090d98bb35aa1",
+      "compression@0.3.0/src/LZSS/Decoder.mo": "3276d18b22271779469de735c94a60e8ca408524219bf5b1e50be87fc121b02f",
+      "compression@0.3.0/src/Huffman/Decoder.mo": "21caa4653332331d075359c6371d517e17c8e330afd01e8661d12181233a155d",
+      "compression@0.3.0/src/libs/CRC32.mo": "1c9cd4b81f5351c6aabe6048c5e9cb2fbb913b7fb2e871bcb356dabcef5f5d86",
+      "compression@0.3.0/src/LZSS/Encoder/lib.mo": "da1929878d1630bca335128cd354ca91f68a9403ea9e5a7727d9b122eaac125f",
+      "compression@0.3.0/src/LZSS/Encoder/PrefixTable/HashValueTrieMap.mo": "c0216033f7b5c93d23daf2b60d66fdeac86eefbd0bf94015a0dbcbf162b7c4cd",
+      "compression@0.3.0/src/LZSS/Encoder/PrefixTable/HashValueTrie.mo": "72ef393fcc79d6214d2b659edd2356741a00357f1a9b7ab4f6182bda1e02c658",
+      "compression@0.3.0/src/LZSS/Encoder/PrefixTable/lib.mo": "06fcf9519118ec250916c67083ac1297f8458dd522fa6e8676ac724f98d2f0a6"
+    },
+    "itertools@0.2.2": {
+      "itertools@0.2.2/mops.toml": "f8cfdae0d67b858f4fa677bd12c88141a5d4a4ae2516c1a1a9344708e9349209",
+      "itertools@0.2.2/LICENSE": "7a20434740347741d4b7cd611cb264251d958333e4ed9cae2af37580f2401a55",
+      "itertools@0.2.2/src/PeekableIter.mo": "7b0e8f276e0796c8ddb73e5b32f32f011479dfff1bd710230579c423396d2667",
+      "itertools@0.2.2/src/Utils/ArrayMut.mo": "58d00b8069c1928baf61a5d544b78515f1f0e1ea85becc273b81e8a9cb73f8dd",
+      "itertools@0.2.2/README.md": "f05c41edd1297373f6197fac08f7ba35a0671a6a275f576ce157cfc49bd883fd",
+      "itertools@0.2.2/src/RevIter.mo": "95abd1413bb127f26c990b494b48ea88461d2b682736eb9aba7313ec75da69c8",
+      "itertools@0.2.2/src/Iter.mo": "1e2c47a07965476d51238ad2f84eb320f29b62f78244b8d0259cf570b23a0532",
+      "itertools@0.2.2/src/Utils/Nat.mo": "aad8b80e863ad2e986c332953665759a0a40ee93bfb1da64ad47928f3efbe55f",
+      "itertools@0.2.2/src/Utils/Deque.mo": "f89f3890ab0321c24bfe55b80aadcd21efe4e4b71193ca34178a8019f3f5e898",
+      "itertools@0.2.2/src/Utils/TrieMap.mo": "92196da765658b7c1f0e48bb5fdf050ebdd0fe87298e927f3154040cbee7f48f"
+    },
+    "circular-buffer@0.0.1": {
+      "circular-buffer@0.0.1/tests/utils/ActorSpec.mo": "2cecbb03ed1f43e8be8ecc6fda727c5c34d280da47ba9258ec35ced5efbfe669",
+      "circular-buffer@0.0.1/tests/Lib.Test.mo": "89f7054bd9ea722bd88693fb84da75af7dee8ec270d123318c6770276e370885",
+      "circular-buffer@0.0.1/mops.toml": "33b05d5ef6c8fc714db6b8ca3646b24eef50e739d7f4744ca9f7ab0799e83c31",
+      "circular-buffer@0.0.1/README.md": "33834862196f594968aaa53c3fd3b3da95e7fdb8c0f52506b8ace652ae469e57",
+      "circular-buffer@0.0.1/LICENSE": "722f3f4279baf4ab992c14fdbb619e088f85af40b24881a8851de77e4ab084f6",
+      "circular-buffer@0.0.1/src/lib.mo": "40e55d74aaaf90bb57b16ab7151fc6b4bdd3e49c947116753886f2dda6d603e2"
+    },
+    "bitbuffer@1.2.0": {
+      "bitbuffer@1.2.0/mops.toml": "69773d9a6546e482dd14c8ae0aa5fba8e9bff02e400d398975d5f78df2f9b9ab",
+      "bitbuffer@1.2.0/src/internal/utils.mo": "b91bba13778973c6600be73fa4352fbad312518e74bda6577a4deb2293d616d1",
+      "bitbuffer@1.2.0/README.md": "87b6a5405b81afd8106fb1615004d470e527fbba29c712e69cdd1dd8fe2452bd",
+      "bitbuffer@1.2.0/tests/BitBuffer.Test.mo": "385caa9903b0b399c9d5d16e926f7e4685ae62ea34be9b12993cf83f750d7830",
+      "bitbuffer@1.2.0/src/BitBuffer.mo": "016391eee3a415f5dfcac5eaf9df51fc3c4ae37d3f8b3388cc117599ce0297e5",
+      "bitbuffer@1.2.0/tests/utils/ActorSpec.mo": "2cecbb03ed1f43e8be8ecc6fda727c5c34d280da47ba9258ec35ced5efbfe669",
+      "bitbuffer@1.2.0/LICENSE": "722f3f4279baf4ab992c14fdbb619e088f85af40b24881a8851de77e4ab084f6"
+    },
+    "buffer-deque@0.0.1": {
+      "buffer-deque@0.0.1/src/SHBufferDeque.mo": "0033738afff7baba5894fd20120f72af6c411f5ab59c3f4e4991781032057a0f",
+      "buffer-deque@0.0.1/README.md": "8cf66458ce504e851f0e964cfdaafc2098f2187544e1590140237560d9daa2f1",
+      "buffer-deque@0.0.1/tests/utils/ActorSpec.mo": "2cecbb03ed1f43e8be8ecc6fda727c5c34d280da47ba9258ec35ced5efbfe669",
+      "buffer-deque@0.0.1/src/BufferDeque.mo": "0bb3c714a70f0301af37bbc386fb234815a5d7ae22f472d7189a5e4f2463e309",
+      "buffer-deque@0.0.1/mops.toml": "ff20e5e85ed0698990b262ec1811c19be153ab1dfa6cc41724c76179cf473f05",
+      "buffer-deque@0.0.1/src/internal/Common.mo": "3739cde721c7f0618000feb53fb3384311428acbaa21aa79d8cd72ad63fc13e0",
+      "buffer-deque@0.0.1/tests/BufferDeque.Test.mo": "dca0757beed4bdccc3b64143dd72eef700d229e2b91e95c73bdcbed3ecb2ad38",
+      "buffer-deque@0.0.1/LICENSE": "722f3f4279baf4ab992c14fdbb619e088f85af40b24881a8851de77e4ab084f6"
+    },
+    "buffer-deque@0.1.0": {
+      "buffer-deque@0.1.0/README.md": "d6e36f6866545bea41dc59944ec48be4eb608e52c1cdd625cf90ff31678429c6",
+      "buffer-deque@0.1.0/mops.toml": "5a62bbcd39943f0cb351fd74f5565d7ce25936bd4da2b2fff9df497f322a21b2",
+      "buffer-deque@0.1.0/src/internal/Common.mo": "3739cde721c7f0618000feb53fb3384311428acbaa21aa79d8cd72ad63fc13e0",
+      "buffer-deque@0.1.0/src/StableBufferDeque.mo": "9fd18813ed4009ed0fbdebe5d2560cddb73ac36a06235bd629f2056108bb5e04",
+      "buffer-deque@0.1.0/LICENSE": "722f3f4279baf4ab992c14fdbb619e088f85af40b24881a8851de77e4ab084f6",
+      "buffer-deque@0.1.0/src/BufferDeque.mo": "dec0a11f694526209d7e5d64e12cdbab2bba6bd5739ddca1d388fa7cb1a990c0"
     },
     "test@2.1.2": {
       "test@2.1.2/LICENSE": "ec415b57f8143746b567c94bfad243f5342f3edf110c94641a1a60e02722db55",
