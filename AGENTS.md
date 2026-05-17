@@ -8,6 +8,15 @@ This is an **ICP (Internet Computer Protocol)** decentralized application built 
 - **TypeScript** for tests (`tests/`) using PocketIC for local testing
 - **Bun** as the package manager and runtime
 
+## Important: CLI Tooling — Use `icp`, Never `dfx`
+
+**NEVER use `dfx`** — this project uses the **`icp` CLI** exclusively for all
+Internet Computer operations (build, deploy, canister management, identity, etc.).
+
+Any command you would associate with `dfx` (e.g. `dfx build`, `dfx deploy`,
+`dfx canister call`) probably has a direct `icp` equivalent. Consult the `icp-cli` skill
+or run `icp --help` when in doubt. Using `dfx` will break the project's toolchain.
+
 ## Important: Package Manager
 
 Use **`bun` for local project dependencies and scripts**.

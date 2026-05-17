@@ -7,7 +7,7 @@ import TestHelpers "./test-helpers";
 // Internal Engine Test Canister
 // ============================================
 //
-// IMPORTANT: Never add this canister to dfx or deploy it.
+// IMPORTANT: Never add this canister to icp.yaml or deploy it.
 //
 // Exposes internal engine modules as public actor methods so PocketIC TypeScript
 // integration tests can invoke them over Candid. Placeholder only — methods will

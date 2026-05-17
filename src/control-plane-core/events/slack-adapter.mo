@@ -7,7 +7,7 @@
 ///   - Signature verification using HMAC-SHA256
 ///
 /// Debug logging: when LOG_SLACK_EVENTS is true, raw payloads are logged
-/// via Logger so they can be retrieved with `dfx canister logs`
+/// via Logger so they can be retrieved with `icp canister logs`
 /// and copy-pasted into test stubs.
 
 import Text "mo:core/Text";
@@ -32,7 +32,7 @@ module {
   // ============================================
 
   /// Log raw payload for development/debugging
-  /// Readable via `dfx canister logs <canister-id>`
+  /// Readable via `icp canister logs <canister-id>`
   func logRawPayload(bodyText : Text) {
     if (Constants.LOG_SLACK_EVENTS) {
       Logger.log(#_debug, ?"SlackAdapterEventRaw", bodyText);

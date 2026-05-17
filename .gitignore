@@ -9,7 +9,7 @@
 .DS_Store
 **/.DS_Store
 
-# dfx/icp temporary files
+# icp temporary files
 .dfx/
 .icp/cache/
 

@@ -10,9 +10,11 @@ import Nat8 "mo:core/Nat8";
 import Blob "mo:core/Blob";
 import Map "mo:core/Map";
 import Array "mo:core/Array";
+import Text "mo:core/Text";
 import Sha256 "mo:sha2/Sha256";
 import IC "mo:ic/Types";
 import ICCall "mo:ic/Call";
+import HKDF "../utilities/hkdf";
 
 module {
   // ============================================
@@ -122,5 +124,61 @@ module {
   /// Get cache size (for monitoring)
   public func getCacheSize(cache : KeyCache) : Nat {
     Map.size(cache);
+  };
+
+  // ============================================
+  // Relay Key Cache
+  // ============================================
+
+  /// Cache for the HKDF-derived AES-256 key used to encrypt the OpenRouter
+  /// API key before forwarding it to the Cloudflare Worker relay.
+  ///
+  /// A single tagged optional pair is sufficient — there is exactly one
+  /// `#relaySharedSecret` per deployment.  `entry.0` is the shared-secret
+  /// text that was last used to derive the key; `entry.1` is the derived
+  /// 32-byte AES key.  Comparing by secret text lets callers invalidate
+  /// the cache simply by storing a new secret.
+  public type RelayKeyCache = { var entry : ?(Text, [Nat8]) };
+
+  /// Create an empty relay key cache.
+  public func emptyRelayKeyCache() : RelayKeyCache {
+    { var entry = null };
+  };
+
+  /// Look up a cached relay AES key, or derive one if the cache is stale.
+  ///
+  /// Worker HKDF contract (must stay in sync with the Cloudflare Worker):
+  ///   salt = [] (empty → 32 zero bytes per RFC 5869 §2.2)
+  ///   ikm  = UTF-8(sharedSecret)
+  ///   info = UTF-8("openrouter-key-v1")
+  ///   len  = 32
+  ///
+  /// This function is **synchronous** — HKDF is pure CPU, no async calls.
+  ///
+  /// @param cache         - Cache entry to read / update (mutated in place)
+  /// @param sharedSecret  - Current relay shared secret text
+  /// @returns 32-byte AES-256 key
+  public func getOrDeriveRelayKey(cache : RelayKeyCache, sharedSecret : Text) : [Nat8] {
+    // Return cached key when the secret hasn't changed.
+    switch (cache.entry) {
+      case (?(cachedSecret, key)) {
+        if (cachedSecret == sharedSecret) { return key };
+      };
+      case (null) {};
+    };
+
+    // Derive: HKDF-SHA256(ikm=UTF8(sharedSecret), info=UTF8("openrouter-key-v1"), len=32)
+    let ikm = Blob.toArray(Text.encodeUtf8(sharedSecret));
+    let info = Blob.toArray(Text.encodeUtf8("openrouter-key-v1"));
+    let key = HKDF.deriveKey(ikm, info, 32);
+
+    cache.entry := ?(sharedSecret, key);
+    key;
+  };
+
+  /// Invalidate the relay key cache.
+  /// Call this whenever `#relaySharedSecret` is updated in main.mo.
+  public func invalidateRelayKeyCache(cache : RelayKeyCache) {
+    cache.entry := null;
   };
 };

@@ -71,7 +71,7 @@ import TestHelpers "./test-helpers";
 // ============================================
 
 // IMPORTANT:
-// Never add this canister to dfx or deploy it
+// Never add this canister to icp.yaml or deploy it
 
 shared ({ caller = parent }) persistent actor class TestCanister() = self {
   // Store for HTTP certification testing

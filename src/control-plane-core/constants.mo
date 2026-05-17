@@ -17,7 +17,7 @@ module {
   public let ONE_HOUR_NS : Nat = 3_600_000_000_000;
 
   // Log raw Slack event payloads for development/debugging
-  // Set it to true for dev/staging to output raw JSON via `dfx canister logs`
+  // Set it to true for dev/staging to output raw JSON via `icp canister logs`
   // Useful for creating new test stubs and debugging event parsing
   public let LOG_SLACK_EVENTS : Bool = true;
 
@@ -92,5 +92,11 @@ module {
 
   // Cycles deposited per top-up (1 trillion)
   public let ENGINE_TOPUP_CYCLES : Nat = 1_000_000_000_000;
+
+  // ── LLM Relay (Cloudflare Worker) ─────────────────────────────────
+
+  // Endpoint of the Cloudflare Worker relay that proxies LLM requests to
+  // OpenRouter and delivers responses back via a signed webhook callback.
+  public let LLM_RELAY_URL : Text = "https://looping-llm-api-worker.looping-ai-account.workers.dev";
 
 };
