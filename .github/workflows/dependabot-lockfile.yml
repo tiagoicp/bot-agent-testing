@@ -22,7 +22,7 @@ jobs:
         run: grep -Ev '^[[:space:]]*(#|$)' versions.env >> "$GITHUB_ENV"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
